@@ -482,25 +482,5 @@
     </footer>
 
     <script src="script.js?v=2"></script>
-    <script>
-        // Force refresh cache
-        console.log('Page loaded at:', new Date().toISOString());
-        
-        // Test piece detection immediately
-        setTimeout(() => {
-            const blackPieces = document.querySelectorAll('.chess-piece.black-piece');
-            const whitePieces = document.querySelectorAll('.chess-piece.white-piece');
-            console.log('IMMEDIATE TEST - Black pieces:', blackPieces.length);
-            console.log('IMMEDIATE TEST - White pieces:', whitePieces.length);
-            
-            // Test first few pieces
-            for (let i = 0; i < Math.min(5, blackPieces.length); i++) {
-                console.log('Black piece', i, ':', blackPieces[i].textContent, 'Classes:', blackPieces[i].className);
-            }
-            for (let i = 0; i < Math.min(5, whitePieces.length); i++) {
-                console.log('White piece', i, ':', whitePieces[i].textContent, 'Classes:', whitePieces[i].className);
-            }
-        }, 100);
-    </script>
 </body>
 </html>

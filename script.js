@@ -357,18 +357,7 @@ let gameOver = false;
 
 // Initialize chess game
 function initChessGame() {
-    console.log('Initializing simple chess game...');
     
-    // Debug: Check piece colors
-    const blackPieces = document.querySelectorAll('.chess-piece.black-piece');
-    const whitePieces = document.querySelectorAll('.chess-piece.white-piece');
-    console.log('Black pieces found:', blackPieces.length);
-    console.log('White pieces found:', whitePieces.length);
-    
-    // Debug: List all pieces and their classes
-    document.querySelectorAll('.chess-piece').forEach((piece, index) => {
-        console.log(`Piece ${index}:`, piece.textContent, 'Classes:', piece.className);
-    });
     
     // Add click events to all squares
     const squares = document.querySelectorAll('.chess-square');
@@ -384,7 +373,6 @@ function initChessGame() {
     
     
     updateGameStatus();
-    console.log('Chess game initialized successfully');
 }
 
 function handleSquareClick(event) {
@@ -395,21 +383,16 @@ function handleSquareClick(event) {
     const col = parseInt(square.dataset.col);
     const piece = square.querySelector('.chess-piece');
     
-    console.log('Clicked square:', row, col, 'Piece:', piece ? piece.textContent : 'empty', 'Is white:', piece ? isWhitePiece(piece) : 'N/A');
-    
     // If it's player's turn and they click on their piece
     if (currentPlayer === 'white' && piece && isWhitePiece(piece)) {
-        console.log('Selecting white piece');
         selectPiece(square, row, col);
     }
     // If a piece is selected and they click on a valid move
     else if (selectedSquare && isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
-        console.log('Making move from', selectedSquare.row, selectedSquare.col, 'to', row, col);
         makeMove(selectedSquare.row, selectedSquare.col, row, col);
     }
     // If they click on an empty square or opponent piece, deselect
     else {
-        console.log('Deselecting piece');
         deselectPiece();
     }
 }
@@ -467,13 +450,10 @@ function isValidMove(fromRow, fromCol, toRow, toCol) {
     const pieceType = fromPiece.textContent;
     const isWhite = fromPiece.classList.contains('white-piece');
     
-    console.log('Validating move:', pieceType, 'from', fromRow, fromCol, 'to', toRow, toCol, 'isWhite:', isWhite);
-    
     // Can't capture own piece
     if (toPiece) {
         const toPieceIsWhite = toPiece.classList.contains('white-piece');
         if (isWhite === toPieceIsWhite) {
-            console.log('Cannot capture own piece');
             return false;
         }
     }
@@ -511,7 +491,6 @@ function isValidMove(fromRow, fromCol, toRow, toCol) {
             isValid = false;
     }
     
-    console.log('Move validation result:', isValid);
     return isValid;
 }
 
@@ -519,11 +498,8 @@ function isValidPawnMove(fromRow, fromCol, toRow, toCol, isWhite, toPiece) {
     const direction = isWhite ? -1 : 1;
     const startRow = isWhite ? 6 : 1;
     
-    console.log('Pawn move validation:', 'from', fromRow, fromCol, 'to', toRow, toCol, 'isWhite:', isWhite, 'toPiece:', toPiece ? toPiece.textContent : 'empty');
-    
     // Move forward one square (only if destination is empty)
     if (toRow === fromRow + direction && toCol === fromCol && !toPiece) {
-        console.log('Valid: Forward one square');
         return true;
     }
     
@@ -533,7 +509,6 @@ function isValidPawnMove(fromRow, fromCol, toRow, toCol, isWhite, toPiece) {
         const middleSquare = document.querySelector(`[data-row="${fromRow + direction}"][data-col="${fromCol}"]`);
         const middlePiece = middleSquare.querySelector('.chess-piece');
         if (!middlePiece) {
-            console.log('Valid: Forward two squares from start');
             return true;
         }
     }
@@ -543,14 +518,10 @@ function isValidPawnMove(fromRow, fromCol, toRow, toCol, isWhite, toPiece) {
         // Make sure it's an enemy piece
         const isEnemyPiece = isWhite ? !toPiece.classList.contains('white-piece') : toPiece.classList.contains('white-piece');
         if (isEnemyPiece) {
-            console.log('Valid: Diagonal capture');
             return true;
-        } else {
-            console.log('Invalid: Cannot capture own piece');
         }
     }
     
-    console.log('Invalid pawn move');
     return false;
 }
 
@@ -632,17 +603,11 @@ function makeMove(fromRow, fromCol, toRow, toCol) {
                 toSquare.appendChild(capturedPiece);
             }
             fromSquare.appendChild(piece);
-            console.log('Move would put own king in check - move rejected');
             return;
         }
     }
     
     deselectPiece();
-    
-    // Check for game over
-    if (checkGameOver()) {
-        return;
-    }
     
     // Switch turns
     currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
@@ -657,8 +622,6 @@ function makeMove(fromRow, fromCol, toRow, toCol) {
 function makeComputerMove() {
     if (gameOver) return;
     
-    console.log('Computer is thinking...');
-    
     // Get all black pieces
     const blackPieces = [];
     document.querySelectorAll('.chess-square').forEach(square => {
@@ -669,8 +632,6 @@ function makeComputerMove() {
             blackPieces.push({ square, row, col, piece });
         }
     });
-    
-    console.log('Computer has', blackPieces.length, 'pieces');
     
     // Collect all possible moves for all black pieces
     const allPossibleMoves = [];
@@ -689,15 +650,32 @@ function makeComputerMove() {
         }
     });
     
-    console.log('Computer found', allPossibleMoves.length, 'possible moves');
-    
     // Make a random legal move
     if (allPossibleMoves.length > 0) {
         const randomMove = allPossibleMoves[Math.floor(Math.random() * allPossibleMoves.length)];
-        console.log('Computer making move:', randomMove.piece.textContent, 'from', randomMove.from.row, randomMove.from.col, 'to', randomMove.to.row, randomMove.to.col);
-        makeMove(randomMove.from.row, randomMove.from.col, randomMove.to.row, randomMove.to.col);
+        
+        // Make the move directly (without calling makeMove to avoid recursion)
+        const fromSquare = document.querySelector(`[data-row="${randomMove.from.row}"][data-col="${randomMove.from.col}"]`);
+        const toSquare = document.querySelector(`[data-row="${randomMove.to.row}"][data-col="${randomMove.to.col}"]`);
+        const piece = fromSquare.querySelector('.chess-piece');
+        
+        if (piece) {
+            toSquare.innerHTML = '';
+            toSquare.appendChild(piece);
+        }
+        
+        // Switch back to white player
+        currentPlayer = 'white';
+        updateGameStatus();
+        
+        // Check for game over after computer move
+        setTimeout(() => {
+            if (checkGameOver()) {
+                return;
+            }
+        }, 100);
+        
     } else {
-        console.log('Computer has no legal moves - game over!');
         endGame('Computer has no legal moves - You win!');
     }
 }
@@ -779,7 +757,6 @@ function endGame(message) {
     gameOver = true;
     const status = document.getElementById('game-status');
     status.textContent = message;
-    console.log('Game ended:', message);
 }
 
 function updateGameStatus() {

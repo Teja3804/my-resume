@@ -389,6 +389,9 @@ function initStockfish() {
                 const move = message.split(' ')[1];
                 if (move && move !== '(none)') {
                     makeStockfishMove(move);
+                } else {
+                    // No legal moves - game over
+                    endGame('Checkmate! You win!');
                 }
             }
         };
@@ -631,8 +634,7 @@ function makeMove(fromRow, fromCol, toRow, toCol) {
         // Update Stockfish position
         updateStockfishPosition();
         
-        // Check for game over (king capture)
-        checkGameOver();
+        // Let Stockfish validate the move - if it's invalid, it will respond with no move
         
         deselectPiece();
         
@@ -688,9 +690,6 @@ function makeStockfishMove(move) {
             
             // Add to move history
             moveHistory.push(move);
-            
-            // Check for game over
-            checkGameOver();
             
             // Switch back to white player
             currentPlayer = 'white';

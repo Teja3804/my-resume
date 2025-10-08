@@ -864,118 +864,91 @@ function resetGame() {
     location.reload();
 }
 
-// Health Assistant functionality
+// Simple Health Assistant
 function initPatientChatbot() {
-    console.log('Initializing Health Assistant...');
-    const input = document.getElementById('assistant-input');
-    const sendBtn = document.getElementById('assistant-send');
-    const messages = document.getElementById('assistant-messages');
-    const status = document.getElementById('assistant-status');
-    const resetBtn = document.getElementById('reset-assistant');
-
-    console.log('Elements found:', { input, sendBtn, messages, status, resetBtn });
-
-    if (!input || !sendBtn || !messages) {
-        console.log('Missing elements, returning early');
-        return;
-    }
-
-    function addMessage(text, sender = 'bot') {
-        const msg = document.createElement('div');
-        msg.className = `message ${sender}-message`;
-        
-        const content = document.createElement('div');
-        content.className = 'message-content';
-        content.textContent = text;
-        
-        msg.appendChild(content);
-        messages.appendChild(msg);
-        messages.scrollTop = messages.scrollHeight;
-    }
-
-    function getBotResponse(userMessage) {
-        const lowerMessage = userMessage.toLowerCase();
-        
-        // Specific responses for supported topics
-        if (lowerMessage.includes('headache')) {
-            return "Headaches can be caused by stress, dehydration, lack of sleep, or tension. Try drinking water, resting in a dark room, or gentle neck stretches. If headaches persist or are severe, consult a healthcare professional.";
-        }
-        
-        if (lowerMessage.includes('sleep') || lowerMessage.includes('insomnia') || lowerMessage.includes('tired')) {
-            return "For better sleep: maintain a regular sleep schedule, avoid screens 1 hour before bed, keep your room cool and dark, and avoid caffeine after 2 PM. Aim for 7-9 hours of sleep per night.";
-        }
-        
-        if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-            return "Hello! I'm your AI health assistant. I can help with headache, sleep, and general health questions. What would you like to know?";
-        }
-        
-        if (lowerMessage.includes('help') || lowerMessage.includes('what can you do')) {
-            return "I can help with: headache management, sleep improvement tips, and general health advice. Just ask me about these topics!";
-        }
-        
-        // Default response for unsupported topics
-        return "Sorry, I can only help with headache, sleep, and general health topics. Please ask me about these specific areas, or consult a healthcare professional for other medical concerns.";
-    }
-
-    function handleUserInput() {
-        console.log('handleUserInput called');
-        const text = input.value.trim();
-        console.log('Input text:', text);
-        if (!text) return;
-        
-        addMessage(text, 'user');
-        input.value = '';
-        if (status) status.textContent = 'AI is thinking...';
-        sendBtn.disabled = true;
-
-        // Simulate typing delay
-        setTimeout(() => {
-            const botResponse = getBotResponse(text);
-            console.log('Bot response:', botResponse);
-            addMessage(botResponse, 'bot');
-            if (status) status.textContent = 'AI Assistant Ready';
-            sendBtn.disabled = false;
-        }, 800);
-    }
-
-    function resetChat() {
-        messages.innerHTML = `
-            <div class="message bot-message">
-                <div class="message-content">
-                    Hello! I'm your AI health assistant. I can help with headache, sleep, and general health questions. How can I assist you today?
-                </div>
-            </div>
-        `;
-        status.textContent = 'AI Assistant Ready';
-    }
-
-    // Event listeners
-    console.log('Adding event listeners...');
-    sendBtn.addEventListener('click', function() {
-        console.log('Send button clicked');
-        handleUserInput();
-    });
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            console.log('Enter key pressed');
-            handleUserInput();
-        }
-    });
-    
-    if (resetBtn) {
-        resetBtn.addEventListener('click', function() {
-            console.log('Reset button clicked');
-            resetChat();
-        });
-    }
-    
-    console.log('Health Assistant initialized successfully!');
-    
-    // Test: Add a test message after 2 seconds
+    // Wait for DOM to be ready
     setTimeout(() => {
-        console.log('Adding test message...');
-        addMessage('Health Assistant is ready! Try asking about headache or sleep.', 'bot');
-    }, 2000);
+        const input = document.getElementById('assistant-input');
+        const sendBtn = document.getElementById('assistant-send');
+        const messages = document.getElementById('assistant-messages');
+        const status = document.getElementById('assistant-status');
+        const resetBtn = document.getElementById('reset-assistant');
+
+        if (!input || !sendBtn || !messages) {
+            console.log('Health Assistant elements not found');
+            return;
+        }
+
+        console.log('Health Assistant initialized');
+
+        function addMessage(text, sender) {
+            const msg = document.createElement('div');
+            msg.className = `message ${sender}-message`;
+            msg.innerHTML = `<div class="message-content">${text}</div>`;
+            messages.appendChild(msg);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function getResponse(userMessage) {
+            const msg = userMessage.toLowerCase();
+            
+            if (msg.includes('headache')) {
+                return "Headaches can be caused by stress, dehydration, or lack of sleep. Try drinking water, resting in a dark room, or gentle neck stretches. If severe, consult a doctor.";
+            }
+            if (msg.includes('sleep') || msg.includes('tired')) {
+                return "For better sleep: maintain a regular schedule, avoid screens before bed, keep room cool and dark, avoid caffeine after 2 PM. Aim for 7-9 hours.";
+            }
+            if (msg.includes('hello') || msg.includes('hi')) {
+                return "Hello! I can help with headache, sleep, and general health questions. What would you like to know?";
+            }
+            if (msg.includes('help')) {
+                return "I can help with: headache management, sleep tips, and general health advice. Ask me about these topics!";
+            }
+            
+            return "Sorry, I can only help with headache, sleep, and general health topics. Please ask about these areas.";
+        }
+
+        function sendMessage() {
+            const text = input.value.trim();
+            if (!text) return;
+            
+            addMessage(text, 'user');
+            input.value = '';
+            
+            if (status) status.textContent = 'AI is thinking...';
+            sendBtn.disabled = true;
+            
+            setTimeout(() => {
+                const response = getResponse(text);
+                addMessage(response, 'bot');
+                if (status) status.textContent = 'AI Assistant Ready';
+                sendBtn.disabled = false;
+            }, 1000);
+        }
+
+        function resetChat() {
+            messages.innerHTML = `
+                <div class="message bot-message">
+                    <div class="message-content">
+                        Hello! I'm your AI health assistant. I can help with headache, sleep, and general health questions. How can I assist you today?
+                    </div>
+                </div>
+            `;
+            if (status) status.textContent = 'AI Assistant Ready';
+        }
+
+        // Event listeners
+        sendBtn.onclick = sendMessage;
+        input.onkeypress = function(e) {
+            if (e.key === 'Enter') sendMessage();
+        };
+        
+        if (resetBtn) {
+            resetBtn.onclick = resetChat;
+        }
+        
+        console.log('Health Assistant ready!');
+    }, 500);
 }
 
 

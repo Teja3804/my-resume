@@ -908,9 +908,15 @@ function initPatientChatbot() {
         }
 
         function handleSendMessage() {
+            console.log('handleSendMessage called');
             const text = input.value.trim();
-            if (!text) return;
+            console.log('Input text:', text);
+            if (!text) {
+                console.log('No text entered');
+                return;
+            }
             
+            console.log('Adding user message:', text);
             // Add user message
             addMessage(text, 'user');
             input.value = '';
@@ -922,6 +928,7 @@ function initPatientChatbot() {
             // Simulate AI thinking
             setTimeout(() => {
                 const response = getAIResponse(text);
+                console.log('AI response:', response);
                 addMessage(response, 'bot');
                 
                 // Re-enable send button
@@ -941,28 +948,53 @@ function initPatientChatbot() {
         }
 
         // Event listeners - using multiple approaches for reliability
-        sendBtn.addEventListener('click', handleSendMessage);
+        console.log('Adding event listeners...');
+        
+        sendBtn.addEventListener('click', function(e) {
+            console.log('Send button clicked via addEventListener');
+            e.preventDefault();
+            handleSendMessage();
+        });
+        
         input.addEventListener('keypress', function(e) {
+            console.log('Key pressed:', e.key);
             if (e.key === 'Enter') {
+                console.log('Enter key pressed via addEventListener');
                 e.preventDefault();
                 handleSendMessage();
             }
         });
         
         if (resetBtn) {
-            resetBtn.addEventListener('click', resetChat);
+            resetBtn.addEventListener('click', function() {
+                console.log('Reset button clicked');
+                resetChat();
+            });
         }
         
         // Also add onclick as backup
-        sendBtn.onclick = handleSendMessage;
+        sendBtn.onclick = function(e) {
+            console.log('Send button clicked via onclick');
+            e.preventDefault();
+            handleSendMessage();
+        };
+        
         input.onkeypress = function(e) {
+            console.log('Key pressed via onkeypress:', e.key);
             if (e.key === 'Enter') {
+                console.log('Enter key pressed via onkeypress');
                 e.preventDefault();
                 handleSendMessage();
             }
         };
         
         console.log('Health Assistant: Ready to receive messages!');
+        
+        // Test: Add a test message after 3 seconds
+        setTimeout(() => {
+            console.log('Adding test message...');
+            addMessage('Health Assistant is ready! Try typing "headache" or "sleep"', 'bot');
+        }, 3000);
     }, 1000);
 }
 

@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initSkillBars();
     initDataStructureAnimations();
     initTypingEffect();
+    initChessGame();
 });
 
 // Navigation functionality
@@ -348,3 +349,276 @@ document.addEventListener('DOMContentLoaded', function() {
         element.style.transition = 'all 0.6s ease';
     });
 });
+
+// Chess Game Implementation
+class ChessGame {
+    constructor() {
+        this.board = this.initializeBoard();
+        this.currentPlayer = 'white';
+        this.selectedPiece = null;
+        this.selectedSquare = null;
+        this.gameOver = false;
+        this.moveHistory = [];
+    }
+
+    initializeBoard() {
+        // Initialize empty 8x8 board
+        const board = Array(8).fill(null).map(() => Array(8).fill(null));
+        
+        // Place black pieces (computer)
+        board[0] = ['♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'];
+        board[1] = ['♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'];
+        
+        // Place white pieces (player)
+        board[6] = ['♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'];
+        board[7] = ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖'];
+        
+        return board;
+    }
+
+    createBoardHTML() {
+        const boardElement = document.getElementById('chess-board');
+        boardElement.innerHTML = '';
+        
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const square = document.createElement('div');
+                square.className = 'chess-square';
+                square.dataset.row = row;
+                square.dataset.col = col;
+                
+                // Alternate square colors
+                if ((row + col) % 2 === 0) {
+                    square.classList.add('light-square');
+                } else {
+                    square.classList.add('dark-square');
+                }
+                
+                // Add piece if exists
+                if (this.board[row][col]) {
+                    const piece = document.createElement('span');
+                    piece.className = 'chess-piece';
+                    piece.textContent = this.board[row][col];
+                    square.appendChild(piece);
+                }
+                
+                // Add click event
+                square.addEventListener('click', () => this.handleSquareClick(row, col));
+                
+                boardElement.appendChild(square);
+            }
+        }
+    }
+
+    handleSquareClick(row, col) {
+        if (this.gameOver) return;
+        
+        const piece = this.board[row][col];
+        
+        // If it's player's turn and they click on their piece
+        if (this.currentPlayer === 'white' && piece && this.isWhitePiece(piece)) {
+            this.selectPiece(row, col);
+        }
+        // If a piece is selected and they click on a valid move
+        else if (this.selectedPiece && this.isValidMove(this.selectedSquare.row, this.selectedSquare.col, row, col)) {
+            this.makeMove(this.selectedSquare.row, this.selectedSquare.col, row, col);
+        }
+        // If they click on an empty square or opponent piece, deselect
+        else {
+            this.deselectPiece();
+        }
+    }
+
+    selectPiece(row, col) {
+        this.deselectPiece();
+        this.selectedPiece = this.board[row][col];
+        this.selectedSquare = { row, col };
+        
+        // Highlight selected square
+        const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        square.classList.add('selected');
+        
+        // Highlight possible moves
+        this.highlightPossibleMoves(row, col);
+    }
+
+    deselectPiece() {
+        this.selectedPiece = null;
+        this.selectedSquare = null;
+        
+        // Remove all highlights
+        document.querySelectorAll('.chess-square').forEach(square => {
+            square.classList.remove('selected', 'possible-move');
+        });
+    }
+
+    highlightPossibleMoves(row, col) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (this.isValidMove(row, col, r, c)) {
+                    const square = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+                    square.classList.add('possible-move');
+                }
+            }
+        }
+    }
+
+    isValidMove(fromRow, fromCol, toRow, toCol) {
+        // Basic validation - can't move to same position
+        if (fromRow === toRow && fromCol === toCol) return false;
+        
+        // Can't capture own piece
+        const targetPiece = this.board[toRow][toCol];
+        if (targetPiece && this.isWhitePiece(targetPiece) === this.isWhitePiece(this.board[fromRow][fromCol])) {
+            return false;
+        }
+        
+        // Simple move validation for pawns
+        const piece = this.board[fromRow][fromCol];
+        if (piece === '♙') { // White pawn
+            // Move forward one square
+            if (toRow === fromRow - 1 && toCol === fromCol && !this.board[toRow][toCol]) {
+                return true;
+            }
+            // Move forward two squares from starting position
+            if (fromRow === 6 && toRow === 4 && toCol === fromCol && !this.board[toRow][toCol] && !this.board[5][toCol]) {
+                return true;
+            }
+            // Capture diagonally
+            if (toRow === fromRow - 1 && Math.abs(toCol - fromCol) === 1 && this.board[toRow][toCol]) {
+                return true;
+            }
+        }
+        
+        // For other pieces, allow basic movement (simplified for demo)
+        return true;
+    }
+
+    isWhitePiece(piece) {
+        return ['♙', '♖', '♘', '♗', '♕', '♔'].includes(piece);
+    }
+
+    makeMove(fromRow, fromCol, toRow, toCol) {
+        const piece = this.board[fromRow][fromCol];
+        const capturedPiece = this.board[toRow][toCol];
+        
+        // Make the move
+        this.board[toRow][toCol] = piece;
+        this.board[fromRow][fromCol] = null;
+        
+        // Record move
+        this.moveHistory.push({
+            from: { row: fromRow, col: fromCol },
+            to: { row: toRow, col: toCol },
+            piece: piece,
+            captured: capturedPiece
+        });
+        
+        // Update display
+        this.createBoardHTML();
+        this.deselectPiece();
+        
+        // Check for game over
+        if (this.checkGameOver()) {
+            this.endGame();
+            return;
+        }
+        
+        // Switch turns
+        this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
+        this.updateGameStatus();
+        
+        // Computer move
+        if (this.currentPlayer === 'black' && !this.gameOver) {
+            setTimeout(() => this.makeComputerMove(), 1000);
+        }
+    }
+
+    makeComputerMove() {
+        if (this.gameOver) return;
+        
+        // Get all possible moves for black pieces
+        const possibleMoves = [];
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const piece = this.board[row][col];
+                if (piece && !this.isWhitePiece(piece)) {
+                    for (let toRow = 0; toRow < 8; toRow++) {
+                        for (let toCol = 0; toCol < 8; toCol++) {
+                            if (this.isValidMove(row, col, toRow, toCol)) {
+                                possibleMoves.push({ from: { row, col }, to: { row: toRow, col: toCol } });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Make a random move
+        if (possibleMoves.length > 0) {
+            const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+            this.makeMove(randomMove.from.row, randomMove.from.col, randomMove.to.row, randomMove.to.col);
+        }
+    }
+
+    checkGameOver() {
+        // Simple game over check - if king is captured
+        let whiteKing = false;
+        let blackKing = false;
+        
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                if (this.board[row][col] === '♔') whiteKing = true;
+                if (this.board[row][col] === '♚') blackKing = true;
+            }
+        }
+        
+        return !whiteKing || !blackKing;
+    }
+
+    endGame() {
+        this.gameOver = true;
+        const status = document.getElementById('game-status');
+        if (!this.board.some(row => row.includes('♔'))) {
+            status.textContent = 'Computer wins!';
+        } else {
+            status.textContent = 'You win!';
+        }
+    }
+
+    updateGameStatus() {
+        const status = document.getElementById('game-status');
+        if (this.currentPlayer === 'white') {
+            status.textContent = 'Your turn (White)';
+        } else {
+            status.textContent = 'Computer thinking...';
+        }
+    }
+
+    resetGame() {
+        this.board = this.initializeBoard();
+        this.currentPlayer = 'white';
+        this.selectedPiece = null;
+        this.selectedSquare = null;
+        this.gameOver = false;
+        this.moveHistory = [];
+        this.createBoardHTML();
+        this.updateGameStatus();
+    }
+}
+
+// Initialize chess game
+function initChessGame() {
+    const chessBoard = document.getElementById('chess-board');
+    if (!chessBoard) return;
+    
+    const game = new ChessGame();
+    game.createBoardHTML();
+    game.updateGameStatus();
+    
+    // Reset button
+    const resetBtn = document.getElementById('reset-game');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => game.resetGame());
+    }
+}

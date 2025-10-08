@@ -1040,4 +1040,48 @@ function setupHealthAssistant() {
     console.log('BACKUP: Health Assistant is ready!');
 }
 
+// EMERGENCY TEST FUNCTION - RUNS IMMEDIATELY
+function emergencyTest() {
+    console.log('EMERGENCY TEST: Starting...');
+    
+    // Test if elements exist
+    const input = document.getElementById('assistant-input');
+    const sendBtn = document.getElementById('assistant-send');
+    const messages = document.getElementById('assistant-messages');
+    
+    console.log('EMERGENCY TEST: Input found:', !!input);
+    console.log('EMERGENCY TEST: Send button found:', !!sendBtn);
+    console.log('EMERGENCY TEST: Messages found:', !!messages);
+    
+    if (input && sendBtn && messages) {
+        console.log('EMERGENCY TEST: All elements found! Setting up...');
+        
+        // Super simple test
+        sendBtn.onclick = function() {
+            console.log('EMERGENCY TEST: Button clicked!');
+            const text = input.value;
+            console.log('EMERGENCY TEST: Input value:', text);
+            
+            if (text.trim()) {
+                const msg = document.createElement('div');
+                msg.innerHTML = 'TEST MESSAGE: ' + text;
+                msg.style.background = 'red';
+                msg.style.color = 'white';
+                msg.style.padding = '10px';
+                msg.style.margin = '5px';
+                messages.appendChild(msg);
+                input.value = '';
+                console.log('EMERGENCY TEST: Message added!');
+            }
+        };
+        
+        console.log('EMERGENCY TEST: Setup complete!');
+    } else {
+        console.log('EMERGENCY TEST: Elements missing!');
+    }
+}
+
+// Run emergency test immediately
+setTimeout(emergencyTest, 3000);
+
 

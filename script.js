@@ -866,17 +866,11 @@ function resetGame() {
 
 // Patient Portal Chatbot functionality
 function initPatientChatbot() {
-    console.log('Initializing Patient Chatbot...');
     const input = document.getElementById('patient-chat-input');
     const sendBtn = document.getElementById('patient-chat-send');
     const messages = document.getElementById('patient-chat-messages');
 
-    console.log('Elements found:', { input, sendBtn, messages });
-
-    if (!input || !sendBtn || !messages) {
-        console.log('Some elements not found, returning early');
-        return;
-    }
+    if (!input || !sendBtn || !messages) return;
 
     function addMessage(text, sender = 'bot') {
         const msg = document.createElement('div');
@@ -953,24 +947,12 @@ function initPatientChatbot() {
         }, 500);
     }
 
-    console.log('Adding event listeners...');
-    sendBtn.addEventListener('click', function() {
-        console.log('Send button clicked');
-        handleUserInput();
-    });
+    sendBtn.addEventListener('click', handleUserInput);
     input.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
-            console.log('Enter key pressed');
             handleUserInput();
         }
     });
-    
-    // Test: Add a test message to verify the chatbot is working
-    setTimeout(() => {
-        addMessage('Chatbot is now active! Try typing a message.', 'bot');
-    }, 1000);
-    
-    console.log('Patient Chatbot initialized successfully!');
 }
 
 

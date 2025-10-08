@@ -382,6 +382,12 @@ function initChessGame() {
         resetBtn.addEventListener('click', resetGame);
     }
     
+    // Debug button
+    const debugBtn = document.getElementById('debug-btn');
+    if (debugBtn) {
+        debugBtn.addEventListener('click', debugColors);
+    }
+    
     updateGameStatus();
     console.log('Chess game initialized successfully');
 }
@@ -701,4 +707,36 @@ function updateGameStatus() {
 function resetGame() {
     // Reload the page to reset the board
     location.reload();
+}
+
+function debugColors() {
+    console.log('=== DEBUG COLORS ===');
+    
+    // Force apply styles directly
+    const blackPieces = document.querySelectorAll('.chess-piece.black-piece');
+    const whitePieces = document.querySelectorAll('.chess-piece.white-piece');
+    
+    console.log('Black pieces found:', blackPieces.length);
+    console.log('White pieces found:', whitePieces.length);
+    
+    // Force apply styles
+    blackPieces.forEach((piece, index) => {
+        piece.style.color = '#000000';
+        piece.style.textShadow = '1px 1px 2px rgba(255, 255, 255, 0.8)';
+        piece.style.fontWeight = '900';
+        piece.style.filter = 'contrast(2) brightness(0.3)';
+        piece.style.background = 'rgba(255, 0, 0, 0.3)';
+        console.log('Applied black style to piece', index, ':', piece.textContent);
+    });
+    
+    whitePieces.forEach((piece, index) => {
+        piece.style.color = '#ffffff';
+        piece.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 1)';
+        piece.style.fontWeight = '900';
+        piece.style.filter = 'contrast(2) brightness(2)';
+        piece.style.background = 'rgba(0, 255, 0, 0.3)';
+        console.log('Applied white style to piece', index, ':', piece.textContent);
+    });
+    
+    console.log('=== END DEBUG ===');
 }

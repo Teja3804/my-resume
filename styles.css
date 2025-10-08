@@ -1248,12 +1248,27 @@ html {
     grid-template-rows: repeat(8, 1fr);
     width: 100%;
     max-width: 400px;
-    aspect-ratio: 1;
+    height: 400px;
     margin: 0 auto;
     border: 2px solid var(--primary-color);
     border-radius: var(--radius-md);
     overflow: hidden;
     box-shadow: var(--shadow-lg);
+    background: #f0d9b5;
+    position: relative;
+}
+
+.loading-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-primary);
+    font-size: 1rem;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.8);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
 }
 
 .chess-square {

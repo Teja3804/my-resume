@@ -378,6 +378,12 @@ class ChessGame {
 
     createBoardHTML() {
         const boardElement = document.getElementById('chess-board');
+        if (!boardElement) {
+            console.error('Chess board element not found in createBoardHTML');
+            return;
+        }
+        
+        console.log('Creating board HTML...');
         boardElement.innerHTML = '';
         
         for (let row = 0; row < 8; row++) {
@@ -408,6 +414,8 @@ class ChessGame {
                 boardElement.appendChild(square);
             }
         }
+        
+        console.log('Board HTML created with', boardElement.children.length, 'squares');
     }
 
     handleSquareClick(row, col) {
@@ -607,18 +615,44 @@ class ChessGame {
     }
 }
 
+// Global chess game instance
+let chessGameInstance = null;
+
 // Initialize chess game
 function initChessGame() {
-    const chessBoard = document.getElementById('chess-board');
-    if (!chessBoard) return;
-    
-    const game = new ChessGame();
-    game.createBoardHTML();
-    game.updateGameStatus();
-    
-    // Reset button
-    const resetBtn = document.getElementById('reset-game');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', () => game.resetGame());
-    }
+    // Add a small delay to ensure DOM is fully loaded
+    setTimeout(() => {
+        const chessBoard = document.getElementById('chess-board');
+        if (!chessBoard) {
+            console.log('Chess board element not found');
+            return;
+        }
+        
+        console.log('Initializing chess game...');
+        
+        try {
+            chessGameInstance = new ChessGame();
+            chessGameInstance.createBoardHTML();
+            chessGameInstance.updateGameStatus();
+            
+            // Reset button
+            const resetBtn = document.getElementById('reset-game');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    if (chessGameInstance) {
+                        chessGameInstance.resetGame();
+                    }
+                });
+            }
+            
+            console.log('Chess game initialized successfully');
+        } catch (error) {
+            console.error('Error initializing chess game:', error);
+            // Show fallback message
+            const fallback = document.getElementById('chess-fallback');
+            if (fallback) {
+                fallback.style.display = 'block';
+            }
+        }
+    }, 100);
 }

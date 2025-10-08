@@ -382,11 +382,6 @@ function initChessGame() {
         resetBtn.addEventListener('click', resetGame);
     }
     
-    // Debug button
-    const debugBtn = document.getElementById('debug-btn');
-    if (debugBtn) {
-        debugBtn.addEventListener('click', debugColors);
-    }
     
     updateGameStatus();
     console.log('Chess game initialized successfully');
@@ -622,16 +617,30 @@ function makeMove(fromRow, fromCol, toRow, toCol) {
     
     const piece = fromSquare.querySelector('.chess-piece');
     if (piece) {
-        // Move the piece (preserve classes)
+        // Store the captured piece (if any)
+        const capturedPiece = toSquare.querySelector('.chess-piece');
+        
+        // Make the move (preserve classes)
         toSquare.innerHTML = '';
         toSquare.appendChild(piece);
+        
+        // Check if this move puts own king in check
+        if (isKingInCheck(currentPlayer)) {
+            // Move puts own king in check - undo the move
+            toSquare.innerHTML = '';
+            if (capturedPiece) {
+                toSquare.appendChild(capturedPiece);
+            }
+            fromSquare.appendChild(piece);
+            console.log('Move would put own king in check - move rejected');
+            return;
+        }
     }
     
     deselectPiece();
     
     // Check for game over
     if (checkGameOver()) {
-        endGame();
         return;
     }
     
@@ -648,6 +657,8 @@ function makeMove(fromRow, fromCol, toRow, toCol) {
 function makeComputerMove() {
     if (gameOver) return;
     
+    console.log('Computer is thinking...');
+    
     // Get all black pieces
     const blackPieces = [];
     document.querySelectorAll('.chess-square').forEach(square => {
@@ -659,40 +670,116 @@ function makeComputerMove() {
         }
     });
     
-    // Make a random move
-    if (blackPieces.length > 0) {
-        const randomPiece = blackPieces[Math.floor(Math.random() * blackPieces.length)];
-        const possibleMoves = [];
-        
-        // Find all possible legal moves for this piece
+    console.log('Computer has', blackPieces.length, 'pieces');
+    
+    // Collect all possible moves for all black pieces
+    const allPossibleMoves = [];
+    
+    blackPieces.forEach(piece => {
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
-                if (isValidMove(randomPiece.row, randomPiece.col, r, c)) {
-                    possibleMoves.push({ row: r, col: c });
+                if (isValidMove(piece.row, piece.col, r, c)) {
+                    allPossibleMoves.push({
+                        from: { row: piece.row, col: piece.col },
+                        to: { row: r, col: c },
+                        piece: piece.piece
+                    });
                 }
             }
         }
-        
-        if (possibleMoves.length > 0) {
-            const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-            makeMove(randomPiece.row, randomPiece.col, randomMove.row, randomMove.col);
-        }
+    });
+    
+    console.log('Computer found', allPossibleMoves.length, 'possible moves');
+    
+    // Make a random legal move
+    if (allPossibleMoves.length > 0) {
+        const randomMove = allPossibleMoves[Math.floor(Math.random() * allPossibleMoves.length)];
+        console.log('Computer making move:', randomMove.piece.textContent, 'from', randomMove.from.row, randomMove.from.col, 'to', randomMove.to.row, randomMove.to.col);
+        makeMove(randomMove.from.row, randomMove.from.col, randomMove.to.row, randomMove.to.col);
+    } else {
+        console.log('Computer has no legal moves - game over!');
+        endGame('Computer has no legal moves - You win!');
     }
 }
 
 function checkGameOver() {
-    // Simple game over check - if white king is captured
-    const whiteKing = document.querySelector('.chess-piece');
-    if (!whiteKing || whiteKing.textContent !== '♔') {
-        return true;
+    // Check if current player has any legal moves
+    const currentPlayerPieces = [];
+    document.querySelectorAll('.chess-square').forEach(square => {
+        const piece = square.querySelector('.chess-piece');
+        if (piece && isWhitePiece(piece) === (currentPlayer === 'white')) {
+            const row = parseInt(square.dataset.row);
+            const col = parseInt(square.dataset.col);
+            currentPlayerPieces.push({ square, row, col, piece });
+        }
+    });
+    
+    // Check if current player has any legal moves
+    for (let piece of currentPlayerPieces) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (isValidMove(piece.row, piece.col, r, c)) {
+                    return false; // Player has legal moves
+                }
+            }
+        }
     }
+    
+    // No legal moves - check if it's checkmate or stalemate
+    const isInCheck = isKingInCheck(currentPlayer);
+    
+    if (isInCheck) {
+        // Checkmate
+        const winner = currentPlayer === 'white' ? 'Computer' : 'You';
+        endGame(`Checkmate! ${winner} wins!`);
+    } else {
+        // Stalemate
+        endGame('Stalemate! Game is a draw!');
+    }
+    
+    return true;
+}
+
+function isKingInCheck(player) {
+    const kingPiece = player === 'white' ? '♔' : '♚';
+    
+    // Find the king
+    let kingRow = -1, kingCol = -1;
+    document.querySelectorAll('.chess-square').forEach(square => {
+        const piece = square.querySelector('.chess-piece');
+        if (piece && piece.textContent === kingPiece) {
+            kingRow = parseInt(square.dataset.row);
+            kingCol = parseInt(square.dataset.col);
+        }
+    });
+    
+    if (kingRow === -1) return false; // King not found
+    
+    // Check if any opponent piece can attack the king
+    const opponentPieces = [];
+    document.querySelectorAll('.chess-square').forEach(square => {
+        const piece = square.querySelector('.chess-piece');
+        if (piece && isWhitePiece(piece) !== (player === 'white')) {
+            const row = parseInt(square.dataset.row);
+            const col = parseInt(square.dataset.col);
+            opponentPieces.push({ row, col, piece });
+        }
+    });
+    
+    for (let piece of opponentPieces) {
+        if (isValidMove(piece.row, piece.col, kingRow, kingCol)) {
+            return true; // King is in check
+        }
+    }
+    
     return false;
 }
 
-function endGame() {
+function endGame(message) {
     gameOver = true;
     const status = document.getElementById('game-status');
-    status.textContent = 'Game Over!';
+    status.textContent = message;
+    console.log('Game ended:', message);
 }
 
 function updateGameStatus() {
@@ -709,34 +796,3 @@ function resetGame() {
     location.reload();
 }
 
-function debugColors() {
-    console.log('=== DEBUG COLORS ===');
-    
-    // Force apply styles directly
-    const blackPieces = document.querySelectorAll('.chess-piece.black-piece');
-    const whitePieces = document.querySelectorAll('.chess-piece.white-piece');
-    
-    console.log('Black pieces found:', blackPieces.length);
-    console.log('White pieces found:', whitePieces.length);
-    
-    // Force apply styles
-    blackPieces.forEach((piece, index) => {
-        piece.style.color = '#000000';
-        piece.style.textShadow = '1px 1px 2px rgba(255, 255, 255, 0.8)';
-        piece.style.fontWeight = '900';
-        piece.style.filter = 'contrast(2) brightness(0.3)';
-        piece.style.background = 'rgba(255, 0, 0, 0.3)';
-        console.log('Applied black style to piece', index, ':', piece.textContent);
-    });
-    
-    whitePieces.forEach((piece, index) => {
-        piece.style.color = '#ffffff';
-        piece.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 1)';
-        piece.style.fontWeight = '900';
-        piece.style.filter = 'contrast(2) brightness(2)';
-        piece.style.background = 'rgba(0, 255, 0, 0.3)';
-        console.log('Applied white style to piece', index, ':', piece.textContent);
-    });
-    
-    console.log('=== END DEBUG ===');
-}

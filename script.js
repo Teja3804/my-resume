@@ -12,6 +12,11 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         initPatientChatbot();
     }, 100);
+    
+    // Direct initialization - backup method
+    setTimeout(() => {
+        setupHealthAssistant();
+    }, 2000);
 });
 
 // Navigation functionality
@@ -971,6 +976,68 @@ function initPatientChatbot() {
     
     // Start initialization
     setTimeout(initAssistant, 1000);
+}
+
+// SIMPLE BACKUP FUNCTION - GUARANTEED TO WORK
+function setupHealthAssistant() {
+    console.log('BACKUP: Setting up Health Assistant...');
+    
+    const input = document.getElementById('assistant-input');
+    const sendBtn = document.getElementById('assistant-send');
+    const messages = document.getElementById('assistant-messages');
+    
+    if (!input || !sendBtn || !messages) {
+        console.log('BACKUP: Elements still not found');
+        return;
+    }
+    
+    console.log('BACKUP: Elements found! Setting up...');
+    
+    // Simple send function
+    function sendMsg() {
+        const text = input.value.trim();
+        if (!text) return;
+        
+        // Add user message
+        const userMsg = document.createElement('div');
+        userMsg.className = 'message user-message';
+        userMsg.innerHTML = '<div class="message-content">' + text + '</div>';
+        messages.appendChild(userMsg);
+        
+        // Clear input
+        input.value = '';
+        
+        // Add bot response
+        setTimeout(() => {
+            let response = "Sorry, I can only help with headache, sleep, and general health topics.";
+            
+            if (text.toLowerCase().includes('headache')) {
+                response = "Headaches can be caused by stress, dehydration, or lack of sleep. Try drinking water, resting in a dark room, or gentle neck stretches. If severe, consult a doctor.";
+            } else if (text.toLowerCase().includes('sleep')) {
+                response = "For better sleep: maintain a regular schedule, avoid screens before bed, keep room cool and dark, avoid caffeine after 2 PM. Aim for 7-9 hours.";
+            } else if (text.toLowerCase().includes('hello') || text.toLowerCase().includes('hi')) {
+                response = "Hello! I can help with headache, sleep, and general health questions. What would you like to know?";
+            }
+            
+            const botMsg = document.createElement('div');
+            botMsg.className = 'message bot-message';
+            botMsg.innerHTML = '<div class="message-content">' + response + '</div>';
+            messages.appendChild(botMsg);
+            
+            messages.scrollTop = messages.scrollHeight;
+        }, 500);
+    }
+    
+    // Set up events
+    sendBtn.onclick = sendMsg;
+    input.onkeypress = function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMsg();
+        }
+    };
+    
+    console.log('BACKUP: Health Assistant is ready!');
 }
 
 

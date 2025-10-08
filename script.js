@@ -359,6 +359,12 @@ let gameOver = false;
 function initChessGame() {
     console.log('Initializing simple chess game...');
     
+    // Debug: Check piece colors
+    const blackPieces = document.querySelectorAll('.chess-piece.black-piece');
+    const whitePieces = document.querySelectorAll('.chess-piece.white-piece');
+    console.log('Black pieces found:', blackPieces.length);
+    console.log('White pieces found:', whitePieces.length);
+    
     // Add click events to all squares
     const squares = document.querySelectorAll('.chess-square');
     squares.forEach(square => {
@@ -383,16 +389,21 @@ function handleSquareClick(event) {
     const col = parseInt(square.dataset.col);
     const piece = square.querySelector('.chess-piece');
     
+    console.log('Clicked square:', row, col, 'Piece:', piece ? piece.textContent : 'empty', 'Is white:', piece ? isWhitePiece(piece) : 'N/A');
+    
     // If it's player's turn and they click on their piece
     if (currentPlayer === 'white' && piece && isWhitePiece(piece)) {
+        console.log('Selecting white piece');
         selectPiece(square, row, col);
     }
     // If a piece is selected and they click on a valid move
     else if (selectedSquare && isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
+        console.log('Making move from', selectedSquare.row, selectedSquare.col, 'to', row, col);
         makeMove(selectedSquare.row, selectedSquare.col, row, col);
     }
     // If they click on an empty square or opponent piece, deselect
     else {
+        console.log('Deselecting piece');
         deselectPiece();
     }
 }
@@ -450,54 +461,69 @@ function isValidMove(fromRow, fromCol, toRow, toCol) {
     const pieceType = fromPiece.textContent;
     const isWhite = fromPiece.classList.contains('white-piece');
     
+    console.log('Validating move:', pieceType, 'from', fromRow, fromCol, 'to', toRow, toCol, 'isWhite:', isWhite);
+    
     // Can't capture own piece
     if (toPiece && toPiece.classList.contains('white-piece') === isWhite) {
+        console.log('Cannot capture own piece');
         return false;
     }
     
     // Piece-specific move validation
+    let isValid = false;
     switch (pieceType) {
         case '♙': // White pawn
-            return isValidPawnMove(fromRow, fromCol, toRow, toCol, true, toPiece);
+            isValid = isValidPawnMove(fromRow, fromCol, toRow, toCol, true, toPiece);
+            break;
         case '♟': // Black pawn
-            return isValidPawnMove(fromRow, fromCol, toRow, toCol, false, toPiece);
+            isValid = isValidPawnMove(fromRow, fromCol, toRow, toCol, false, toPiece);
+            break;
         case '♖': // White rook
         case '♜': // Black rook
-            return isValidRookMove(fromRow, fromCol, toRow, toCol);
+            isValid = isValidRookMove(fromRow, fromCol, toRow, toCol);
+            break;
         case '♘': // White knight
         case '♞': // Black knight
-            return isValidKnightMove(fromRow, fromCol, toRow, toCol);
+            isValid = isValidKnightMove(fromRow, fromCol, toRow, toCol);
+            break;
         case '♗': // White bishop
         case '♝': // Black bishop
-            return isValidBishopMove(fromRow, fromCol, toRow, toCol);
+            isValid = isValidBishopMove(fromRow, fromCol, toRow, toCol);
+            break;
         case '♕': // White queen
         case '♛': // Black queen
-            return isValidQueenMove(fromRow, fromCol, toRow, toCol);
+            isValid = isValidQueenMove(fromRow, fromCol, toRow, toCol);
+            break;
         case '♔': // White king
         case '♚': // Black king
-            return isValidKingMove(fromRow, fromCol, toRow, toCol);
+            isValid = isValidKingMove(fromRow, fromCol, toRow, toCol);
+            break;
         default:
-            return false;
+            isValid = false;
     }
+    
+    console.log('Move validation result:', isValid);
+    return isValid;
 }
 
 function isValidPawnMove(fromRow, fromCol, toRow, toCol, isWhite, toPiece) {
     const direction = isWhite ? -1 : 1;
     const startRow = isWhite ? 6 : 1;
     
-    // Move forward one square
+    // Move forward one square (only if destination is empty)
     if (toRow === fromRow + direction && toCol === fromCol && !toPiece) {
         return true;
     }
     
-    // Move forward two squares from starting position
+    // Move forward two squares from starting position (only if destination is empty)
     if (fromRow === startRow && toRow === fromRow + 2 * direction && toCol === fromCol && !toPiece) {
         // Check if path is clear
         const middleSquare = document.querySelector(`[data-row="${fromRow + direction}"][data-col="${fromCol}"]`);
-        return !middleSquare.querySelector('.chess-piece');
+        const middlePiece = middleSquare.querySelector('.chess-piece');
+        return !middlePiece;
     }
     
-    // Capture diagonally
+    // Capture diagonally (only if there's an enemy piece)
     if (toRow === fromRow + direction && Math.abs(toCol - fromCol) === 1 && toPiece) {
         return true;
     }

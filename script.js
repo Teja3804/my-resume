@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initSkillBars();
     initDataStructureAnimations();
     initTypingEffect();
-    initChessGame();
+    // Chess game is now handled by chess-simple.js
 });
 
 // Navigation functionality

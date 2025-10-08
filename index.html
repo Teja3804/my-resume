@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BhargavaTeja Reddy Guddeti - Data Structures Portfolio</title>
-    <link rel="stylesheet" href="styles.css?v=5">
+    <link rel="stylesheet" href="styles.css?v=6">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -252,30 +252,27 @@
                     </p>
                     
                     <!-- AI Health Assistant Demo -->
-                    <div class="health-assistant-container">
-                        <div class="assistant-info">
-                            <p class="assistant-description">Try our AI Health Assistant! Ask about headache, sleep, or general health topics.</p>
-                            <div class="assistant-status">
-                                <span id="assistant-status">AI Assistant Ready</span>
-                                <button id="reset-assistant" class="reset-btn">New Chat</button>
-                            </div>
+                    <div class="health-assistant-demo">
+                        <div class="assistant-header">
+                            <h4>AI Health Assistant</h4>
+                            <button id="reset-assistant" class="reset-btn">New Chat</button>
                         </div>
                         <div class="assistant-chat" id="assistant-chat">
                             <div class="chat-messages" id="assistant-messages">
                                 <div class="message bot-message">
                                     <div class="message-content">
-                                        Hello! I'm your AI health assistant. I can help with headache, sleep, and general health questions. How can I assist you today?
+                                        Hello! I can help with headache, sleep, and general health questions. How can I assist you?
                                     </div>
                                 </div>
                             </div>
                             <div class="chat-input">
-                                <input type="text" id="assistant-input" placeholder="Ask about headache, sleep, or health..." maxlength="200">
+                                <input type="text" id="assistant-input" placeholder="Ask about headache, sleep..." maxlength="100">
                                 <button id="assistant-send" class="send-btn">
                                     <i class="fas fa-paper-plane"></i>
                                 </button>
                             </div>
                             <div class="assistant-disclaimer">
-                                <small>⚠️ This is a demo. For medical emergencies, contact healthcare professionals.</small>
+                                <small>⚠️ Demo only. Consult healthcare professionals for medical advice.</small>
                             </div>
                         </div>
                     </div>
@@ -513,6 +510,6 @@
     </footer>
 
     <script src="chess-simple.js"></script>
-    <script src="script.js?v=5"></script>
+    <script src="script.js?v=6"></script>
 </body>
 </html>

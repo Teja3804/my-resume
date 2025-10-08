@@ -864,18 +864,25 @@ function resetGame() {
     location.reload();
 }
 
-// Patient Portal Chatbot functionality
+// Health Assistant functionality
 function initPatientChatbot() {
-    const input = document.getElementById('patient-chat-input');
-    const sendBtn = document.getElementById('patient-chat-send');
-    const messages = document.getElementById('patient-chat-messages');
+    const input = document.getElementById('assistant-input');
+    const sendBtn = document.getElementById('assistant-send');
+    const messages = document.getElementById('assistant-messages');
+    const status = document.getElementById('assistant-status');
+    const resetBtn = document.getElementById('reset-assistant');
 
     if (!input || !sendBtn || !messages) return;
 
     function addMessage(text, sender = 'bot') {
         const msg = document.createElement('div');
-        msg.className = `chat-message ${sender}`;
-        msg.textContent = text;
+        msg.className = `message ${sender}-message`;
+        
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        content.textContent = text;
+        
+        msg.appendChild(content);
         messages.appendChild(msg);
         messages.scrollTop = messages.scrollHeight;
     }
@@ -883,54 +890,25 @@ function initPatientChatbot() {
     function getBotResponse(userMessage) {
         const lowerMessage = userMessage.toLowerCase();
         
-        // Health-related responses
-        if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-            return "Hello! I'm your AI health assistant. How can I help you today?";
-        }
-        if (lowerMessage.includes('symptoms') || lowerMessage.includes('symptom')) {
-            return "I can help explain common symptoms, but remember to consult a healthcare professional for proper diagnosis.";
-        }
-        if (lowerMessage.includes('pain') || lowerMessage.includes('hurt')) {
-            return "Pain can have many causes. If you're experiencing severe or persistent pain, please seek medical attention.";
-        }
-        if (lowerMessage.includes('fever') || lowerMessage.includes('temperature')) {
-            return "Fever is often a sign of infection. If your temperature is above 100.4°F (38°C) or persists, consult a doctor.";
-        }
+        // Specific responses for supported topics
         if (lowerMessage.includes('headache')) {
-            return "Headaches can be caused by stress, dehydration, or other factors. Rest and hydration often help.";
-        }
-        if (lowerMessage.includes('medicine') || lowerMessage.includes('medication')) {
-            return "I can provide general information about medications, but always consult your doctor before taking any medication.";
-        }
-        if (lowerMessage.includes('exercise') || lowerMessage.includes('workout')) {
-            return "Regular exercise is important for health. Start slowly and consult a doctor if you have health concerns.";
-        }
-        if (lowerMessage.includes('diet') || lowerMessage.includes('food') || lowerMessage.includes('eat')) {
-            return "A balanced diet with fruits, vegetables, and whole grains is essential for good health.";
-        }
-        if (lowerMessage.includes('sleep') || lowerMessage.includes('tired')) {
-            return "Good sleep hygiene includes 7-9 hours of sleep, consistent bedtime, and a dark, cool room.";
-        }
-        if (lowerMessage.includes('stress') || lowerMessage.includes('anxiety')) {
-            return "Stress management techniques include deep breathing, meditation, exercise, and talking to someone you trust.";
-        }
-        if (lowerMessage.includes('appointment') || lowerMessage.includes('schedule')) {
-            return "For appointment scheduling, please contact your healthcare provider directly or use the patient portal.";
-        }
-        if (lowerMessage.includes('records') || lowerMessage.includes('medical')) {
-            return "Your medical records are securely stored in the patient portal. Contact your healthcare provider for access.";
+            return "Headaches can be caused by stress, dehydration, lack of sleep, or tension. Try drinking water, resting in a dark room, or gentle neck stretches. If headaches persist or are severe, consult a healthcare professional.";
         }
         
-        // Default responses
-        const defaultResponses = [
-            "That's an interesting question! While I can provide general health information, I recommend consulting with a healthcare professional for personalized advice.",
-            "I understand your concern. For specific medical advice, it's best to speak with a qualified healthcare provider.",
-            "I can help with general health topics, but remember that I'm not a substitute for professional medical advice.",
-            "That's a good question about health. For accurate diagnosis and treatment, please consult a healthcare professional.",
-            "I'm here to provide general health information, but for medical concerns, please seek advice from a qualified doctor."
-        ];
+        if (lowerMessage.includes('sleep') || lowerMessage.includes('insomnia') || lowerMessage.includes('tired')) {
+            return "For better sleep: maintain a regular sleep schedule, avoid screens 1 hour before bed, keep your room cool and dark, and avoid caffeine after 2 PM. Aim for 7-9 hours of sleep per night.";
+        }
         
-        return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+        if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
+            return "Hello! I'm your AI health assistant. I can help with headache, sleep, and general health questions. What would you like to know?";
+        }
+        
+        if (lowerMessage.includes('help') || lowerMessage.includes('what can you do')) {
+            return "I can help with: headache management, sleep improvement tips, and general health advice. Just ask me about these topics!";
+        }
+        
+        // Default response for unsupported topics
+        return "Sorry, I can only help with headache, sleep, and general health topics. Please ask me about these specific areas, or consult a healthcare professional for other medical concerns.";
     }
 
     function handleUserInput() {
@@ -939,20 +917,40 @@ function initPatientChatbot() {
         
         addMessage(text, 'user');
         input.value = '';
+        status.textContent = 'AI is thinking...';
+        sendBtn.disabled = true;
 
         // Simulate typing delay
         setTimeout(() => {
             const botResponse = getBotResponse(text);
             addMessage(botResponse, 'bot');
-        }, 500);
+            status.textContent = 'AI Assistant Ready';
+            sendBtn.disabled = false;
+        }, 800);
     }
 
+    function resetChat() {
+        messages.innerHTML = `
+            <div class="message bot-message">
+                <div class="message-content">
+                    Hello! I'm your AI health assistant. I can help with headache, sleep, and general health questions. How can I assist you today?
+                </div>
+            </div>
+        `;
+        status.textContent = 'AI Assistant Ready';
+    }
+
+    // Event listeners
     sendBtn.addEventListener('click', handleUserInput);
     input.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             handleUserInput();
         }
     });
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetChat);
+    }
 }
 
 

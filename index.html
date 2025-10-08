@@ -250,26 +250,41 @@
                         between doctors and patients, featuring appointment scheduling, medical records, 
                         and secure messaging capabilities. Currently in development.
                     </p>
+                    
+                    <!-- AI Health Assistant Demo -->
+                    <div class="health-assistant-container">
+                        <div class="assistant-info">
+                            <p class="assistant-description">Try our AI Health Assistant! Ask about headache, sleep, or general health topics.</p>
+                            <div class="assistant-status">
+                                <span id="assistant-status">AI Assistant Ready</span>
+                                <button id="reset-assistant" class="reset-btn">New Chat</button>
+                            </div>
+                        </div>
+                        <div class="assistant-chat" id="assistant-chat">
+                            <div class="chat-messages" id="assistant-messages">
+                                <div class="message bot-message">
+                                    <div class="message-content">
+                                        Hello! I'm your AI health assistant. I can help with headache, sleep, and general health questions. How can I assist you today?
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chat-input">
+                                <input type="text" id="assistant-input" placeholder="Ask about headache, sleep, or health..." maxlength="200">
+                                <button id="assistant-send" class="send-btn">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                            <div class="assistant-disclaimer">
+                                <small>⚠️ This is a demo. For medical emergencies, contact healthcare professionals.</small>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="project-tech">
                         <span class="tech-tag">Python</span>
                         <span class="tech-tag">SQL</span>
                         <span class="tech-tag">JavaScript</span>
-                    </div>
-                    
-                    <!-- Mini Chatbot Demo -->
-                    <div class="chatbot-container" id="patient-chatbot">
-                        <div class="chat-header">
-                            AI Health Assistant
-                        </div>
-                        <div class="chat-messages" id="patient-chat-messages">
-                            <div class="chat-message bot">
-                                Hello! I'm your AI health assistant. How can I help you today?
-                            </div>
-                        </div>
-                        <div class="chat-input">
-                            <input type="text" id="patient-chat-input" placeholder="Ask me about health topics..." />
-                            <button id="patient-chat-send">Send</button>
-                        </div>
+                        <span class="tech-tag">AI Assistant</span>
                     </div>
                 </div>
 

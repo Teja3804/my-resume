@@ -987,210 +987,143 @@ section {
     color: var(--primary-color);
 }
 
-/* Patient Portal Chatbot Styles */
-#patient-chatbot {
-    border: 1px solid var(--primary-color);
-    border-radius: 16px;
-    padding: 0;
+/* Health Assistant Styles */
+.health-assistant-container {
     margin-top: 20px;
-    background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(0, 212, 255, 0.05) 100%);
-    color: var(--text-primary);
-    display: flex;
-    flex-direction: column;
-    height: 350px;
-    box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15);
+    border: 2px solid var(--primary-color);
+    border-radius: var(--radius-md);
+    background: rgba(0, 212, 255, 0.05);
     overflow: hidden;
-    position: relative;
 }
 
-#patient-chatbot::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--primary-color));
-    background-size: 200% 100%;
-    animation: gradientShift 3s ease-in-out infinite;
-}
-
-@keyframes gradientShift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-}
-
-#patient-chatbot .chat-header {
+.assistant-info {
+    padding: 15px 20px;
     background: linear-gradient(135deg, var(--primary-color), #0099cc);
     color: white;
-    padding: 12px 20px;
+}
+
+.assistant-description {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.assistant-status {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 10px;
+}
+
+#assistant-status {
     font-weight: 600;
     font-size: 14px;
 }
 
-#patient-chatbot .chat-header::before {
-    content: '🤖';
-    font-size: 16px;
+.assistant-chat {
+    height: 300px;
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
 }
 
-#patient-chatbot .chat-messages {
+.chat-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
-    background: var(--bg-primary);
-    position: relative;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-#patient-chatbot .chat-messages::-webkit-scrollbar {
-    width: 6px;
-}
-
-#patient-chatbot .chat-messages::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-    border-radius: 3px;
-}
-
-#patient-chatbot .chat-messages::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
-    border-radius: 3px;
-}
-
-#patient-chatbot .chat-messages::-webkit-scrollbar-thumb:hover {
-    background: var(--secondary-color);
-}
-
-#patient-chatbot .chat-message {
-    padding: 12px 16px;
-    margin: 8px 0;
+.message {
+    max-width: 80%;
+    padding: 10px 15px;
     border-radius: 18px;
-    max-width: 75%;
-    word-wrap: break-word;
-    animation: messageSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    position: relative;
     font-size: 14px;
     line-height: 1.4;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    animation: messageSlide 0.3s ease;
 }
 
-#patient-chatbot .chat-message.user {
-    background: linear-gradient(135deg, var(--primary-color), #0099cc);
-    color: white;
+.user-message {
     align-self: flex-end;
-    margin-left: auto;
-    border-bottom-right-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+    background: var(--primary-color);
+    color: white;
+    border-bottom-right-radius: 5px;
 }
 
-#patient-chatbot .chat-message.user::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    right: -8px;
-    width: 0;
-    height: 0;
-    border: 8px solid transparent;
-    border-left-color: var(--primary-color);
-    border-bottom: none;
-    border-right: none;
-}
-
-#patient-chatbot .chat-message.bot {
-    background: linear-gradient(135deg, var(--bg-secondary), rgba(0, 212, 255, 0.1));
-    color: var(--text-primary);
+.bot-message {
     align-self: flex-start;
-    border: 1px solid rgba(0, 212, 255, 0.3);
-    border-bottom-left-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.1);
-}
-
-#patient-chatbot .chat-message.bot::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: -8px;
-    width: 0;
-    height: 0;
-    border: 8px solid transparent;
-    border-right-color: var(--bg-secondary);
-    border-bottom: none;
-    border-left: none;
-}
-
-#patient-chatbot .chat-input {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    padding: 20px;
-    background: var(--bg-secondary);
-    border-top: 1px solid rgba(0, 212, 255, 0.2);
-}
-
-#patient-chatbot .chat-input input {
-    flex: 1;
-    padding: 12px 16px;
-    border-radius: 25px;
-    border: 2px solid rgba(0, 212, 255, 0.3);
     background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--primary-color);
+    border-bottom-left-radius: 5px;
+}
+
+.message-content {
+    word-wrap: break-word;
+}
+
+.chat-input {
+    display: flex;
+    padding: 15px;
+    gap: 10px;
+    border-top: 1px solid var(--primary-color);
+    background: var(--bg-primary);
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 10px 15px;
+    border: 1px solid var(--primary-color);
+    border-radius: 25px;
+    background: var(--bg-secondary);
     color: var(--text-primary);
     font-size: 14px;
     outline: none;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
 }
 
-#patient-chatbot .chat-input input:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.2), 0 4px 12px rgba(0, 212, 255, 0.15);
-    transform: translateY(-1px);
+.chat-input input:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
 }
 
-#patient-chatbot .chat-input input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-    font-style: italic;
-}
-
-#patient-chatbot .chat-input button {
-    padding: 12px 20px;
-    border-radius: 25px;
+.send-btn {
+    background: var(--primary-color);
     border: none;
-    background: linear-gradient(135deg, var(--primary-color), #0099cc);
     color: white;
+    padding: 10px 15px;
+    border-radius: 50%;
     cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
-    position: relative;
-    overflow: hidden;
+    transition: all 0.3s ease;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-#patient-chatbot .chat-input button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
+.send-btn:hover {
+    background: var(--secondary-color);
+    transform: scale(1.1);
 }
 
-#patient-chatbot .chat-input button:hover {
-    background: linear-gradient(135deg, var(--secondary-color), #ff5252);
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+.send-btn:disabled {
+    background: #666;
+    cursor: not-allowed;
+    transform: none;
 }
 
-#patient-chatbot .chat-input button:hover::before {
-    left: 100%;
+.assistant-disclaimer {
+    padding: 10px 15px;
+    background: rgba(255, 107, 107, 0.1);
+    border-top: 1px solid rgba(255, 107, 107, 0.3);
+    text-align: center;
 }
 
-#patient-chatbot .chat-input button:active {
-    transform: translateY(0) scale(1);
-    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
+.assistant-disclaimer small {
+    color: var(--secondary-color);
+    font-size: 12px;
 }
 
 @keyframes messageSlide {

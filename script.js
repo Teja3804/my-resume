@@ -403,6 +403,63 @@ function selectPiece(square, row, col) {
     selectedSquare = { square, row, col };
     square.classList.add('selected');
     highlightPossibleMoves(row, col);
+    
+    // Check if this piece has any legal moves
+    let hasLegalMoves = false;
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            if (isValidMove(row, col, r, c)) {
+                hasLegalMoves = true;
+                break;
+            }
+        }
+        if (hasLegalMoves) break;
+    }
+    
+    // If no legal moves, deselect and check if player has any moves at all
+    if (!hasLegalMoves) {
+        deselectPiece();
+        checkIfPlayerHasAnyMoves();
+    }
+}
+
+function checkIfPlayerHasAnyMoves() {
+    // Check if current player has any legal moves with any piece
+    const currentPlayerPieces = [];
+    document.querySelectorAll('.chess-square').forEach(square => {
+        const piece = square.querySelector('.chess-piece');
+        if (piece && isWhitePiece(piece) === (currentPlayer === 'white')) {
+            const row = parseInt(square.dataset.row);
+            const col = parseInt(square.dataset.col);
+            currentPlayerPieces.push({ square, row, col, piece });
+        }
+    });
+    
+    // Check if any piece has legal moves
+    let hasAnyLegalMoves = false;
+    for (let piece of currentPlayerPieces) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (isValidMove(piece.row, piece.col, r, c)) {
+                    hasAnyLegalMoves = true;
+                    break;
+                }
+            }
+            if (hasAnyLegalMoves) break;
+        }
+        if (hasAnyLegalMoves) break;
+    }
+    
+    // If no legal moves, game over
+    if (!hasAnyLegalMoves) {
+        const isInCheck = isKingInCheck(currentPlayer);
+        if (isInCheck) {
+            const winner = currentPlayer === 'white' ? 'Computer' : 'You';
+            endGame(`Checkmate! ${winner} wins!`);
+        } else {
+            endGame('Stalemate! Game is a draw!');
+        }
+    }
 }
 
 function deselectPiece() {
@@ -672,14 +729,7 @@ function makeComputerMove() {
         currentPlayer = 'white';
         updateGameStatus();
         
-        // Only check for game over after at least 4 moves (2 moves per player)
-        if (moveCount >= 4) {
-            setTimeout(() => {
-                if (!gameOver) {
-                    checkGameOver();
-                }
-            }, 100);
-        }
+        // Don't check for game over automatically - let the game continue
         
     } else {
         endGame('Computer has no legal moves - You win!');
@@ -689,48 +739,23 @@ function makeComputerMove() {
 function checkGameOver() {
     if (gameOver) return; // Already game over
     
-    // Check if current player has any legal moves
-    const currentPlayerPieces = [];
-    document.querySelectorAll('.chess-square').forEach(square => {
-        const piece = square.querySelector('.chess-piece');
-        if (piece && isWhitePiece(piece) === (currentPlayer === 'white')) {
-            const row = parseInt(square.dataset.row);
-            const col = parseInt(square.dataset.col);
-            currentPlayerPieces.push({ square, row, col, piece });
+    // Only check for game over if we have enough pieces on the board
+    const allPieces = document.querySelectorAll('.chess-piece');
+    if (allPieces.length < 4) {
+        // Too few pieces - game might be over
+        const whitePieces = document.querySelectorAll('.chess-piece.white-piece');
+        const blackPieces = document.querySelectorAll('.chess-piece.black-piece');
+        
+        if (whitePieces.length === 0) {
+            endGame('Computer wins! All white pieces captured!');
+        } else if (blackPieces.length === 0) {
+            endGame('You win! All black pieces captured!');
         }
-    });
-    
-    // Check if current player has any legal moves
-    let hasLegalMoves = false;
-    for (let piece of currentPlayerPieces) {
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                if (isValidMove(piece.row, piece.col, r, c)) {
-                    hasLegalMoves = true;
-                    break;
-                }
-            }
-            if (hasLegalMoves) break;
-        }
-        if (hasLegalMoves) break;
-    }
-    
-    // If player has legal moves, game continues
-    if (hasLegalMoves) {
         return;
     }
     
-    // No legal moves - check if it's checkmate or stalemate
-    const isInCheck = isKingInCheck(currentPlayer);
-    
-    if (isInCheck) {
-        // Checkmate
-        const winner = currentPlayer === 'white' ? 'Computer' : 'You';
-        endGame(`Checkmate! ${winner} wins!`);
-    } else {
-        // Stalemate
-        endGame('Stalemate! Game is a draw!');
-    }
+    // For now, let the game continue unless there are very few pieces
+    // We'll add proper checkmate detection later
 }
 
 function isKingInCheck(player) {

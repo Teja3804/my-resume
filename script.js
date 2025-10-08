@@ -365,6 +365,11 @@ function initChessGame() {
     console.log('Black pieces found:', blackPieces.length);
     console.log('White pieces found:', whitePieces.length);
     
+    // Debug: List all pieces and their classes
+    document.querySelectorAll('.chess-piece').forEach((piece, index) => {
+        console.log(`Piece ${index}:`, piece.textContent, 'Classes:', piece.className);
+    });
+    
     // Add click events to all squares
     const squares = document.querySelectorAll('.chess-square');
     squares.forEach(square => {
@@ -464,9 +469,12 @@ function isValidMove(fromRow, fromCol, toRow, toCol) {
     console.log('Validating move:', pieceType, 'from', fromRow, fromCol, 'to', toRow, toCol, 'isWhite:', isWhite);
     
     // Can't capture own piece
-    if (toPiece && toPiece.classList.contains('white-piece') === isWhite) {
-        console.log('Cannot capture own piece');
-        return false;
+    if (toPiece) {
+        const toPieceIsWhite = toPiece.classList.contains('white-piece');
+        if (isWhite === toPieceIsWhite) {
+            console.log('Cannot capture own piece');
+            return false;
+        }
     }
     
     // Piece-specific move validation
@@ -510,8 +518,11 @@ function isValidPawnMove(fromRow, fromCol, toRow, toCol, isWhite, toPiece) {
     const direction = isWhite ? -1 : 1;
     const startRow = isWhite ? 6 : 1;
     
+    console.log('Pawn move validation:', 'from', fromRow, fromCol, 'to', toRow, toCol, 'isWhite:', isWhite, 'toPiece:', toPiece ? toPiece.textContent : 'empty');
+    
     // Move forward one square (only if destination is empty)
     if (toRow === fromRow + direction && toCol === fromCol && !toPiece) {
+        console.log('Valid: Forward one square');
         return true;
     }
     
@@ -520,14 +531,25 @@ function isValidPawnMove(fromRow, fromCol, toRow, toCol, isWhite, toPiece) {
         // Check if path is clear
         const middleSquare = document.querySelector(`[data-row="${fromRow + direction}"][data-col="${fromCol}"]`);
         const middlePiece = middleSquare.querySelector('.chess-piece');
-        return !middlePiece;
+        if (!middlePiece) {
+            console.log('Valid: Forward two squares from start');
+            return true;
+        }
     }
     
     // Capture diagonally (only if there's an enemy piece)
     if (toRow === fromRow + direction && Math.abs(toCol - fromCol) === 1 && toPiece) {
-        return true;
+        // Make sure it's an enemy piece
+        const isEnemyPiece = isWhite ? !toPiece.classList.contains('white-piece') : toPiece.classList.contains('white-piece');
+        if (isEnemyPiece) {
+            console.log('Valid: Diagonal capture');
+            return true;
+        } else {
+            console.log('Invalid: Cannot capture own piece');
+        }
     }
     
+    console.log('Invalid pawn move');
     return false;
 }
 

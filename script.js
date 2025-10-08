@@ -864,21 +864,34 @@ function resetGame() {
     location.reload();
 }
 
-// Health Assistant - Compact & Reliable
+// Simple Health Assistant - Bulletproof Version
 function initPatientChatbot() {
-    // Wait for DOM to be fully ready
-    setTimeout(() => {
+    console.log('Starting Health Assistant initialization...');
+    
+    // Try multiple times to find elements
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    const initAssistant = () => {
+        attempts++;
+        console.log(`Attempt ${attempts} to find elements...`);
+        
         const input = document.getElementById('assistant-input');
         const sendBtn = document.getElementById('assistant-send');
         const messages = document.getElementById('assistant-messages');
         const resetBtn = document.getElementById('reset-assistant');
 
         if (!input || !sendBtn || !messages) {
-            console.log('Health Assistant: Elements not found');
+            console.log('Elements not found, attempt:', attempts);
+            if (attempts < maxAttempts) {
+                setTimeout(initAssistant, 500);
+            } else {
+                console.log('Failed to find elements after', maxAttempts, 'attempts');
+            }
             return;
         }
 
-        console.log('Health Assistant: Initialized successfully');
+        console.log('All elements found! Initializing...');
 
         function addMessage(text, sender) {
             const messageDiv = document.createElement('div');
@@ -907,34 +920,22 @@ function initPatientChatbot() {
             return "Sorry, I can only help with headache, sleep, and general health topics. Please ask about these specific areas.";
         }
 
-        function handleSendMessage() {
-            console.log('handleSendMessage called');
+        function sendMessage() {
             const text = input.value.trim();
-            console.log('Input text:', text);
-            if (!text) {
-                console.log('No text entered');
-                return;
-            }
+            if (!text) return;
             
-            console.log('Adding user message:', text);
-            // Add user message
             addMessage(text, 'user');
             input.value = '';
             
-            // Disable send button
             sendBtn.disabled = true;
             sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             
-            // Simulate AI thinking
             setTimeout(() => {
                 const response = getAIResponse(text);
-                console.log('AI response:', response);
                 addMessage(response, 'bot');
-                
-                // Re-enable send button
                 sendBtn.disabled = false;
                 sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
-            }, 1200);
+            }, 1000);
         }
 
         function resetChat() {
@@ -947,55 +948,29 @@ function initPatientChatbot() {
             `;
         }
 
-        // Event listeners - using multiple approaches for reliability
-        console.log('Adding event listeners...');
-        
-        sendBtn.addEventListener('click', function(e) {
-            console.log('Send button clicked via addEventListener');
-            e.preventDefault();
-            handleSendMessage();
-        });
-        
-        input.addEventListener('keypress', function(e) {
-            console.log('Key pressed:', e.key);
+        // Simple event listeners
+        sendBtn.onclick = sendMessage;
+        input.onkeypress = function(e) {
             if (e.key === 'Enter') {
-                console.log('Enter key pressed via addEventListener');
                 e.preventDefault();
-                handleSendMessage();
+                sendMessage();
             }
-        });
+        };
         
         if (resetBtn) {
-            resetBtn.addEventListener('click', function() {
-                console.log('Reset button clicked');
-                resetChat();
-            });
+            resetBtn.onclick = resetChat;
         }
         
-        // Also add onclick as backup
-        sendBtn.onclick = function(e) {
-            console.log('Send button clicked via onclick');
-            e.preventDefault();
-            handleSendMessage();
-        };
+        console.log('Health Assistant is ready!');
         
-        input.onkeypress = function(e) {
-            console.log('Key pressed via onkeypress:', e.key);
-            if (e.key === 'Enter') {
-                console.log('Enter key pressed via onkeypress');
-                e.preventDefault();
-                handleSendMessage();
-            }
-        };
-        
-        console.log('Health Assistant: Ready to receive messages!');
-        
-        // Test: Add a test message after 3 seconds
+        // Test message
         setTimeout(() => {
-            console.log('Adding test message...');
-            addMessage('Health Assistant is ready! Try typing "headache" or "sleep"', 'bot');
-        }, 3000);
-    }, 1000);
+            addMessage('Ready! Try asking about headache or sleep.', 'bot');
+        }, 2000);
+    };
+    
+    // Start initialization
+    setTimeout(initAssistant, 1000);
 }
 
 

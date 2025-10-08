@@ -354,6 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
 let currentPlayer = 'white';
 let selectedSquare = null;
 let gameOver = false;
+let moveCount = 0;
 
 // Initialize chess game
 function initChessGame() {
@@ -609,6 +610,9 @@ function makeMove(fromRow, fromCol, toRow, toCol) {
     
     deselectPiece();
     
+    // Increment move count
+    moveCount++;
+    
     // Switch turns
     currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
     updateGameStatus();
@@ -668,12 +672,14 @@ function makeComputerMove() {
         currentPlayer = 'white';
         updateGameStatus();
         
-        // Check for game over after computer move
-        setTimeout(() => {
-            if (checkGameOver()) {
-                return;
-            }
-        }, 100);
+        // Only check for game over after at least 4 moves (2 moves per player)
+        if (moveCount >= 4) {
+            setTimeout(() => {
+                if (!gameOver) {
+                    checkGameOver();
+                }
+            }, 100);
+        }
         
     } else {
         endGame('Computer has no legal moves - You win!');
@@ -681,6 +687,8 @@ function makeComputerMove() {
 }
 
 function checkGameOver() {
+    if (gameOver) return; // Already game over
+    
     // Check if current player has any legal moves
     const currentPlayerPieces = [];
     document.querySelectorAll('.chess-square').forEach(square => {
@@ -693,14 +701,23 @@ function checkGameOver() {
     });
     
     // Check if current player has any legal moves
+    let hasLegalMoves = false;
     for (let piece of currentPlayerPieces) {
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 if (isValidMove(piece.row, piece.col, r, c)) {
-                    return false; // Player has legal moves
+                    hasLegalMoves = true;
+                    break;
                 }
             }
+            if (hasLegalMoves) break;
         }
+        if (hasLegalMoves) break;
+    }
+    
+    // If player has legal moves, game continues
+    if (hasLegalMoves) {
+        return;
     }
     
     // No legal moves - check if it's checkmate or stalemate
@@ -714,8 +731,6 @@ function checkGameOver() {
         // Stalemate
         endGame('Stalemate! Game is a draw!');
     }
-    
-    return true;
 }
 
 function isKingInCheck(player) {
@@ -769,6 +784,12 @@ function updateGameStatus() {
 }
 
 function resetGame() {
+    // Reset game state
+    currentPlayer = 'white';
+    selectedSquare = null;
+    gameOver = false;
+    moveCount = 0;
+    
     // Reload the page to reset the board
     location.reload();
 }

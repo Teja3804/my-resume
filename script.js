@@ -350,15 +350,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Simple Chess Game Implementation
+// Chess Game with Stockfish Integration
 let currentPlayer = 'white';
 let selectedSquare = null;
 let gameOver = false;
-let moveCount = 0;
+let stockfish = null;
+let gamePosition = 'startpos';
+let moveHistory = [];
 
 // Initialize chess game
 function initChessGame() {
-    
+    // Initialize Stockfish
+    initStockfish();
     
     // Add click events to all squares
     const squares = document.querySelectorAll('.chess-square');
@@ -372,8 +375,33 @@ function initChessGame() {
         resetBtn.addEventListener('click', resetGame);
     }
     
-    
     updateGameStatus();
+}
+
+function initStockfish() {
+    try {
+        stockfish = new Worker('https://cdn.jsdelivr.net/npm/stockfish@16.0.0/stockfish.min.js');
+        
+        stockfish.onmessage = (event) => {
+            const message = event.data;
+            
+            if (message.startsWith('bestmove')) {
+                const move = message.split(' ')[1];
+                if (move && move !== '(none)') {
+                    makeStockfishMove(move);
+                }
+            }
+        };
+        
+        // Initialize Stockfish
+        stockfish.postMessage('uci');
+        stockfish.postMessage('isready');
+        stockfish.postMessage('ucinewgame');
+        
+    } catch (error) {
+        console.error('Failed to initialize Stockfish:', error);
+        // Fallback to simple random moves
+    }
 }
 
 function handleSquareClick(event) {
@@ -403,63 +431,6 @@ function selectPiece(square, row, col) {
     selectedSquare = { square, row, col };
     square.classList.add('selected');
     highlightPossibleMoves(row, col);
-    
-    // Check if this piece has any legal moves
-    let hasLegalMoves = false;
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-            if (isValidMove(row, col, r, c)) {
-                hasLegalMoves = true;
-                break;
-            }
-        }
-        if (hasLegalMoves) break;
-    }
-    
-    // If no legal moves, deselect and check if player has any moves at all
-    if (!hasLegalMoves) {
-        deselectPiece();
-        checkIfPlayerHasAnyMoves();
-    }
-}
-
-function checkIfPlayerHasAnyMoves() {
-    // Check if current player has any legal moves with any piece
-    const currentPlayerPieces = [];
-    document.querySelectorAll('.chess-square').forEach(square => {
-        const piece = square.querySelector('.chess-piece');
-        if (piece && isWhitePiece(piece) === (currentPlayer === 'white')) {
-            const row = parseInt(square.dataset.row);
-            const col = parseInt(square.dataset.col);
-            currentPlayerPieces.push({ square, row, col, piece });
-        }
-    });
-    
-    // Check if any piece has legal moves
-    let hasAnyLegalMoves = false;
-    for (let piece of currentPlayerPieces) {
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                if (isValidMove(piece.row, piece.col, r, c)) {
-                    hasAnyLegalMoves = true;
-                    break;
-                }
-            }
-            if (hasAnyLegalMoves) break;
-        }
-        if (hasAnyLegalMoves) break;
-    }
-    
-    // If no legal moves, game over
-    if (!hasAnyLegalMoves) {
-        const isInCheck = isKingInCheck(currentPlayer);
-        if (isInCheck) {
-            const winner = currentPlayer === 'white' ? 'Computer' : 'You';
-            endGame(`Checkmate! ${winner} wins!`);
-        } else {
-            endGame('Stalemate! Game is a draw!');
-        }
-    }
 }
 
 function deselectPiece() {
@@ -653,109 +624,92 @@ function makeMove(fromRow, fromCol, toRow, toCol) {
         toSquare.innerHTML = '';
         toSquare.appendChild(piece);
         
-        // Check if this move puts own king in check
-        if (isKingInCheck(currentPlayer)) {
-            // Move puts own king in check - undo the move
-            toSquare.innerHTML = '';
-            if (capturedPiece) {
-                toSquare.appendChild(capturedPiece);
-            }
-            fromSquare.appendChild(piece);
-            return;
+        // Convert to algebraic notation for Stockfish
+        const move = convertToAlgebraic(fromRow, fromCol, toRow, toCol, piece.textContent, capturedPiece);
+        moveHistory.push(move);
+        
+        // Update Stockfish position
+        updateStockfishPosition();
+        
+        // Check for game over (king capture)
+        checkGameOver();
+        
+        deselectPiece();
+        
+        // Switch turns
+        currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+        updateGameStatus();
+        
+        // Computer move via Stockfish
+        if (currentPlayer === 'black' && !gameOver && stockfish) {
+            setTimeout(() => {
+                stockfish.postMessage('go depth 8');
+            }, 500);
         }
-    }
-    
-    deselectPiece();
-    
-    // Increment move count
-    moveCount++;
-    
-    // Switch turns
-    currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
-    updateGameStatus();
-    
-    // Computer move
-    if (currentPlayer === 'black' && !gameOver) {
-        setTimeout(() => makeComputerMove(), 1000);
     }
 }
 
-function makeComputerMove() {
+function convertToAlgebraic(fromRow, fromCol, toRow, toCol, piece, capturedPiece) {
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+    
+    const fromFile = files[fromCol];
+    const fromRank = ranks[fromRow];
+    const toFile = files[toCol];
+    const toRank = ranks[toRow];
+    
+    return fromFile + fromRank + toFile + toRank;
+}
+
+function updateStockfishPosition() {
+    if (stockfish && moveHistory.length > 0) {
+        const movesString = moveHistory.join(' ');
+        stockfish.postMessage(`position startpos moves ${movesString}`);
+    }
+}
+
+function makeStockfishMove(move) {
     if (gameOver) return;
     
-    // Get all black pieces
-    const blackPieces = [];
-    document.querySelectorAll('.chess-square').forEach(square => {
-        const piece = square.querySelector('.chess-piece');
-        if (piece && !isWhitePiece(piece)) {
-            const row = parseInt(square.dataset.row);
-            const col = parseInt(square.dataset.col);
-            blackPieces.push({ square, row, col, piece });
-        }
-    });
+    // Convert Stockfish move to board coordinates
+    const fromFile = move.charCodeAt(0) - 97; // a=0, b=1, etc.
+    const fromRank = 8 - parseInt(move[1]);   // 8=0, 7=1, etc.
+    const toFile = move.charCodeAt(2) - 97;
+    const toRank = 8 - parseInt(move[3]);
     
-    // Collect all possible moves for all black pieces
-    const allPossibleMoves = [];
+    const fromSquare = document.querySelector(`[data-row="${fromRank}"][data-col="${fromFile}"]`);
+    const toSquare = document.querySelector(`[data-row="${toRank}"][data-col="${toFile}"]`);
     
-    blackPieces.forEach(piece => {
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                if (isValidMove(piece.row, piece.col, r, c)) {
-                    allPossibleMoves.push({
-                        from: { row: piece.row, col: piece.col },
-                        to: { row: r, col: c },
-                        piece: piece.piece
-                    });
-                }
-            }
-        }
-    });
-    
-    // Make a random legal move
-    if (allPossibleMoves.length > 0) {
-        const randomMove = allPossibleMoves[Math.floor(Math.random() * allPossibleMoves.length)];
-        
-        // Make the move directly (without calling makeMove to avoid recursion)
-        const fromSquare = document.querySelector(`[data-row="${randomMove.from.row}"][data-col="${randomMove.from.col}"]`);
-        const toSquare = document.querySelector(`[data-row="${randomMove.to.row}"][data-col="${randomMove.to.col}"]`);
+    if (fromSquare && toSquare) {
         const piece = fromSquare.querySelector('.chess-piece');
-        
         if (piece) {
             toSquare.innerHTML = '';
             toSquare.appendChild(piece);
+            
+            // Add to move history
+            moveHistory.push(move);
+            
+            // Check for game over
+            checkGameOver();
+            
+            // Switch back to white player
+            currentPlayer = 'white';
+            updateGameStatus();
         }
-        
-        // Switch back to white player
-        currentPlayer = 'white';
-        updateGameStatus();
-        
-        // Don't check for game over automatically - let the game continue
-        
-    } else {
-        endGame('Computer has no legal moves - You win!');
     }
 }
 
+
 function checkGameOver() {
-    if (gameOver) return; // Already game over
+    // Simple game over - only when king is captured
+    const whiteKing = document.querySelector('.chess-piece.white-piece');
+    const blackKing = document.querySelector('.chess-piece.black-piece');
     
-    // Only check for game over if we have enough pieces on the board
-    const allPieces = document.querySelectorAll('.chess-piece');
-    if (allPieces.length < 4) {
-        // Too few pieces - game might be over
-        const whitePieces = document.querySelectorAll('.chess-piece.white-piece');
-        const blackPieces = document.querySelectorAll('.chess-piece.black-piece');
-        
-        if (whitePieces.length === 0) {
-            endGame('Computer wins! All white pieces captured!');
-        } else if (blackPieces.length === 0) {
-            endGame('You win! All black pieces captured!');
-        }
-        return;
+    if (!whiteKing || whiteKing.textContent !== '♔') {
+        endGame('Computer wins! White king captured!');
+    } else if (!blackKing || blackKing.textContent !== '♚') {
+        endGame('You win! Black king captured!');
     }
-    
-    // For now, let the game continue unless there are very few pieces
-    // We'll add proper checkmate detection later
 }
 
 function isKingInCheck(player) {
@@ -813,7 +767,13 @@ function resetGame() {
     currentPlayer = 'white';
     selectedSquare = null;
     gameOver = false;
-    moveCount = 0;
+    moveHistory = [];
+    gamePosition = 'startpos';
+    
+    // Reset Stockfish
+    if (stockfish) {
+        stockfish.postMessage('ucinewgame');
+    }
     
     // Reload the page to reset the board
     location.reload();

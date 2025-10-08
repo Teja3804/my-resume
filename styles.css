@@ -987,6 +987,7 @@ section {
     color: var(--primary-color);
 }
 
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .hamburger {

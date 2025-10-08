@@ -860,3 +860,4 @@ function resetGame() {
     location.reload();
 }
 
+

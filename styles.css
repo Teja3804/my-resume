@@ -999,6 +999,8 @@ section {
     flex-direction: column;
     height: 300px;
     box-shadow: 0 4px 12px rgba(0, 212, 255, 0.1);
+    /* Temporary: Make it more visible for debugging */
+    border: 2px solid #ff6b6b !important;
 }
 
 #patient-chatbot .chat-messages {

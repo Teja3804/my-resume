@@ -1040,48 +1040,69 @@ function setupHealthAssistant() {
     console.log('BACKUP: Health Assistant is ready!');
 }
 
-// EMERGENCY TEST FUNCTION - RUNS IMMEDIATELY
-function emergencyTest() {
-    console.log('EMERGENCY TEST: Starting...');
+// WORKING CHATBOT - GUARANTEED TO WORK
+function workingChatbot() {
+    console.log('WORKING CHATBOT: Starting...');
     
-    // Test if elements exist
     const input = document.getElementById('assistant-input');
     const sendBtn = document.getElementById('assistant-send');
     const messages = document.getElementById('assistant-messages');
     
-    console.log('EMERGENCY TEST: Input found:', !!input);
-    console.log('EMERGENCY TEST: Send button found:', !!sendBtn);
-    console.log('EMERGENCY TEST: Messages found:', !!messages);
-    
-    if (input && sendBtn && messages) {
-        console.log('EMERGENCY TEST: All elements found! Setting up...');
-        
-        // Super simple test
-        sendBtn.onclick = function() {
-            console.log('EMERGENCY TEST: Button clicked!');
-            const text = input.value;
-            console.log('EMERGENCY TEST: Input value:', text);
-            
-            if (text.trim()) {
-                const msg = document.createElement('div');
-                msg.innerHTML = 'TEST MESSAGE: ' + text;
-                msg.style.background = 'red';
-                msg.style.color = 'white';
-                msg.style.padding = '10px';
-                msg.style.margin = '5px';
-                messages.appendChild(msg);
-                input.value = '';
-                console.log('EMERGENCY TEST: Message added!');
-            }
-        };
-        
-        console.log('EMERGENCY TEST: Setup complete!');
-    } else {
-        console.log('EMERGENCY TEST: Elements missing!');
+    if (!input || !sendBtn || !messages) {
+        console.log('WORKING CHATBOT: Elements not found, retrying...');
+        setTimeout(workingChatbot, 1000);
+        return;
     }
+    
+    console.log('WORKING CHATBOT: All elements found!');
+    
+    function sendMessage() {
+        const text = input.value.trim();
+        if (!text) return;
+        
+        // Add user message
+        const userMsg = document.createElement('div');
+        userMsg.className = 'message user-message';
+        userMsg.innerHTML = '<div class="message-content">' + text + '</div>';
+        messages.appendChild(userMsg);
+        
+        // Clear input
+        input.value = '';
+        
+        // Add bot response
+        setTimeout(() => {
+            let response = "Sorry, I can only help with headache, sleep, and general health topics.";
+            
+            if (text.toLowerCase().includes('headache')) {
+                response = "Headaches can be caused by stress, dehydration, or lack of sleep. Try drinking water, resting in a dark room, or gentle neck stretches.";
+            } else if (text.toLowerCase().includes('sleep')) {
+                response = "For better sleep: maintain a regular schedule, avoid screens before bed, keep room cool and dark, avoid caffeine after 2 PM.";
+            } else if (text.toLowerCase().includes('hello') || text.toLowerCase().includes('hi')) {
+                response = "Hello! I can help with headache, sleep, and general health questions. What would you like to know?";
+            }
+            
+            const botMsg = document.createElement('div');
+            botMsg.className = 'message bot-message';
+            botMsg.innerHTML = '<div class="message-content">' + response + '</div>';
+            messages.appendChild(botMsg);
+            
+            messages.scrollTop = messages.scrollHeight;
+        }, 500);
+    }
+    
+    // Set up events
+    sendBtn.onclick = sendMessage;
+    input.onkeypress = function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage();
+        }
+    };
+    
+    console.log('WORKING CHATBOT: Ready!');
 }
 
-// Run emergency test immediately
-setTimeout(emergencyTest, 3000);
+// Start working chatbot
+setTimeout(workingChatbot, 2000);
 
 

@@ -357,6 +357,7 @@ let gameOver = false;
 let stockfish = null;
 let gamePosition = 'startpos';
 let moveHistory = [];
+let stockfishTimeout = null;
 
 // Initialize chess game
 function initChessGame() {
@@ -390,12 +391,19 @@ function initStockfish() {
                 const move = message.split(' ')[1];
                 console.log('Best move:', move);
                 if (move && move !== '(none)') {
+                    clearTimeout(stockfishTimeout);
                     makeStockfishMove(move);
                 } else {
-                    // No legal moves - game over
-                    endGame('Checkmate! You win!');
+                    console.warn('No legal Stockfish move — falling back.');
+                    clearTimeout(stockfishTimeout);
+                    makeRandomMove();
                 }
             }
+        };
+
+        stockfish.onerror = (err) => {
+            console.error('Stockfish crashed:', err);
+            stockfish = null;
         };
         
         // Initialize Stockfish
@@ -407,7 +415,7 @@ function initStockfish() {
         
     } catch (error) {
         console.error('Failed to initialize Stockfish:', error);
-        // Fallback to simple random moves
+        stockfish = null;
     }
 }
 
@@ -649,15 +657,16 @@ function makeMove(fromRow, fromCol, toRow, toCol) {
         // Computer move via Stockfish
         if (currentPlayer === 'black' && !gameOver) {
             if (stockfish) {
-                setTimeout(() => {
-                    console.log('Asking Stockfish for move...');
-                    stockfish.postMessage('go depth 8');
-                }, 500);
-            } else {
-                // Fallback to simple random move
-                setTimeout(() => {
+                console.log('Asking Stockfish for move...');
+                stockfish.postMessage('go depth 8');
+                
+                // If no Stockfish reply in 3 seconds → random move
+                stockfishTimeout = setTimeout(() => {
+                    console.warn('Stockfish timed out, making random move.');
                     makeRandomMove();
-                }, 1000);
+                }, 3000);
+            } else {
+                setTimeout(makeRandomMove, 1000);
             }
         }
     }
@@ -699,14 +708,13 @@ function makeStockfishMove(move) {
         if (piece) {
             toSquare.innerHTML = '';
             toSquare.appendChild(piece);
-            
-            // Add to move history
             moveHistory.push(move);
-            
-            // Switch back to white player
             currentPlayer = 'white';
             updateGameStatus();
         }
+    } else {
+        console.warn('Invalid Stockfish move, using random fallback.');
+        makeRandomMove();
     }
 }
 
@@ -837,12 +845,18 @@ function resetGame() {
     moveHistory = [];
     gamePosition = 'startpos';
     
+    // Clear any pending timeouts
+    if (stockfishTimeout) {
+        clearTimeout(stockfishTimeout);
+        stockfishTimeout = null;
+    }
+    
     // Reset Stockfish
     if (stockfish) {
         stockfish.postMessage('ucinewgame');
     }
     
-    // Reload the page to reset the board
+    // Reset the board by reloading the page (simplest approach for now)
     location.reload();
 }
 

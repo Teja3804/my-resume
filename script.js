@@ -384,9 +384,11 @@ function initStockfish() {
         
         stockfish.onmessage = (event) => {
             const message = event.data;
+            console.log('Stockfish:', message);
             
             if (message.startsWith('bestmove')) {
                 const move = message.split(' ')[1];
+                console.log('Best move:', move);
                 if (move && move !== '(none)') {
                     makeStockfishMove(move);
                 } else {
@@ -400,6 +402,8 @@ function initStockfish() {
         stockfish.postMessage('uci');
         stockfish.postMessage('isready');
         stockfish.postMessage('ucinewgame');
+        
+        console.log('Stockfish initialized successfully');
         
     } catch (error) {
         console.error('Failed to initialize Stockfish:', error);
@@ -643,10 +647,18 @@ function makeMove(fromRow, fromCol, toRow, toCol) {
         updateGameStatus();
         
         // Computer move via Stockfish
-        if (currentPlayer === 'black' && !gameOver && stockfish) {
-            setTimeout(() => {
-                stockfish.postMessage('go depth 8');
-            }, 500);
+        if (currentPlayer === 'black' && !gameOver) {
+            if (stockfish) {
+                setTimeout(() => {
+                    console.log('Asking Stockfish for move...');
+                    stockfish.postMessage('go depth 8');
+                }, 500);
+            } else {
+                // Fallback to simple random move
+                setTimeout(() => {
+                    makeRandomMove();
+                }, 1000);
+            }
         }
     }
 }
@@ -698,6 +710,62 @@ function makeStockfishMove(move) {
     }
 }
 
+function makeRandomMove() {
+    if (gameOver) return;
+    
+    // Get all black pieces
+    const blackPieces = [];
+    document.querySelectorAll('.chess-square').forEach(square => {
+        const piece = square.querySelector('.chess-piece');
+        if (piece && !isWhitePiece(piece)) {
+            const row = parseInt(square.dataset.row);
+            const col = parseInt(square.dataset.col);
+            blackPieces.push({ square, row, col, piece });
+        }
+    });
+    
+    // Collect all possible moves for all black pieces
+    const allPossibleMoves = [];
+    
+    blackPieces.forEach(piece => {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (isValidMove(piece.row, piece.col, r, c)) {
+                    allPossibleMoves.push({
+                        from: { row: piece.row, col: piece.col },
+                        to: { row: r, col: c },
+                        piece: piece.piece
+                    });
+                }
+            }
+        }
+    });
+    
+    // Make a random legal move
+    if (allPossibleMoves.length > 0) {
+        const randomMove = allPossibleMoves[Math.floor(Math.random() * allPossibleMoves.length)];
+        
+        // Make the move directly
+        const fromSquare = document.querySelector(`[data-row="${randomMove.from.row}"][data-col="${randomMove.from.col}"]`);
+        const toSquare = document.querySelector(`[data-row="${randomMove.to.row}"][data-col="${randomMove.to.col}"]`);
+        const piece = fromSquare.querySelector('.chess-piece');
+        
+        if (piece) {
+            toSquare.innerHTML = '';
+            toSquare.appendChild(piece);
+            
+            // Convert to algebraic notation
+            const move = convertToAlgebraic(randomMove.from.row, randomMove.from.col, randomMove.to.row, randomMove.to.col, piece.textContent, null);
+            moveHistory.push(move);
+        }
+        
+        // Switch back to white player
+        currentPlayer = 'white';
+        updateGameStatus();
+    } else {
+        endGame('Computer has no legal moves - You win!');
+    }
+}
 
 function checkGameOver() {
     // Simple game over - only when king is captured

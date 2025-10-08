@@ -10,12 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Chess game is now handled by chess-simple.js
     // Initialize chatbot after a small delay to ensure DOM is ready
     setTimeout(() => {
-        initPatientChatbot();
-    }, 100);
-    
-    // Direct initialization - backup method
-    setTimeout(() => {
-        setupHealthAssistant();
+        workingChatbot();
     }, 2000);
 });
 

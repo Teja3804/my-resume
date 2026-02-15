@@ -568,15 +568,16 @@ a {
 }
 
 .chess-preview-trigger {
-  width: 100%;
+  width: auto;
+  max-width: 360px;
   margin-top: 0.58rem;
   border: 1px solid #d4cab9;
   border-radius: 14px;
-  padding: 0.72rem;
+  padding: 0.58rem;
   background: linear-gradient(135deg, #fffaf0 0%, #f3f9f6 100%);
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.7rem;
+  grid-template-columns: 76px 1fr;
+  gap: 0.58rem;
   text-align: left;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -588,66 +589,64 @@ a {
 }
 
 .chess-preview-board {
+  width: 76px;
+  min-width: 76px;
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid rgba(17, 17, 17, 0.2);
+}
+
+.chess-preview-board > div {
+  width: 76px !important;
 }
 
 .chess-preview-copy p {
   margin: 0;
   font-weight: 700;
   color: #273036;
+  font-size: 0.93rem;
 }
 
 .chess-preview-copy span {
   display: block;
-  margin-top: 0.28rem;
-  font-size: 0.78rem;
+  margin-top: 0.24rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
   color: #58606b;
 }
 
-.trading-module {
-  background: linear-gradient(145deg, #081a2b 0%, #0f2740 52%, #0b1f34 100%);
-  border-color: rgba(133, 174, 215, 0.4);
-  color: #eaf5ff;
+.trading-launch {
+  border-color: rgba(138, 176, 209, 0.42);
+  background: linear-gradient(145deg, rgba(9, 28, 42, 0.95) 0%, rgba(10, 34, 53, 0.9) 100%);
 }
 
-.trading-module .module-label {
-  color: rgba(187, 226, 255, 0.9);
+.trading-launch .module-label {
+  color: rgba(188, 224, 255, 0.9);
 }
 
-.trading-head {
-  margin-top: 0.55rem;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.65rem;
-  align-items: flex-start;
-}
-
-.trading-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.trading-controls select,
-.trading-controls button {
+.trading-launch-button {
+  margin-top: 0.62rem;
   border-radius: 10px;
-  border: 1px solid rgba(176, 210, 247, 0.34);
-  background: rgba(10, 34, 52, 0.78);
+  border: 1px solid rgba(176, 210, 247, 0.42);
+  background: rgba(7, 25, 39, 0.92);
   color: #edf7ff;
-  padding: 0.4rem 0.62rem;
-  font-family: var(--font-mono), monospace;
-  font-size: 0.74rem;
-}
-
-.trading-controls button {
+  padding: 0.44rem 0.72rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.05em;
   cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
-.trading-controls button:hover {
-  border-color: rgba(228, 243, 255, 0.65);
+.trading-launch-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(228, 243, 255, 0.72);
+}
+
+.trading-launch-copy {
+  margin: 0.62rem 0 0;
+  color: rgba(218, 236, 252, 0.9);
+  line-height: 1.56;
+  font-size: 0.84rem;
 }
 
 .trading-feedback {
@@ -728,6 +727,73 @@ a {
   border: 1px solid rgba(150, 197, 238, 0.25);
   background: #0a2234;
   display: block;
+}
+
+.trading-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 69;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 14, 20, 0.44);
+  backdrop-filter: blur(4px);
+}
+
+.trading-modal {
+  width: min(78vw, 980px);
+  min-width: 320px;
+  max-height: 88vh;
+  overflow-y: auto;
+  border: 1px solid rgba(133, 174, 215, 0.44);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #081a2b 0%, #0f2740 52%, #0b1f34 100%);
+  box-shadow: 0 30px 60px rgba(4, 10, 15, 0.38);
+  padding: 1rem;
+  color: #eaf5ff;
+}
+
+.trading-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.trading-modal-head p {
+  margin: 0;
+  font-size: 0.74rem;
+  color: rgba(178, 220, 255, 0.88);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.trading-modal-head h3 {
+  margin: 0.42rem 0 0;
+  font-size: 1.08rem;
+  color: #f0f8ff;
+}
+
+.trading-modal-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.trading-modal-actions button {
+  border: 1px solid rgba(176, 210, 247, 0.36);
+  border-radius: 10px;
+  background: rgba(10, 34, 52, 0.78);
+  color: #edf7ff;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+}
+
+.trading-modal-actions button:hover {
+  border-color: rgba(228, 243, 255, 0.65);
+}
+
+.trading-modal-body {
+  margin-top: 0.7rem;
 }
 
 .chess-modal-backdrop {
@@ -1246,6 +1312,10 @@ a {
   .chess-modal {
     width: min(52vw, 700px);
   }
+
+  .trading-modal {
+    width: min(88vw, 980px);
+  }
 }
 
 @media (max-width: 760px) {
@@ -1291,13 +1361,8 @@ a {
     grid-template-columns: 1fr;
   }
 
-  .trading-head {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .chess-preview-trigger {
-    grid-template-columns: 1fr;
+    grid-template-columns: 76px 1fr;
   }
 
   .experience-entry {
@@ -1320,6 +1385,11 @@ a {
 
   .chess-modal {
     width: min(92vw, 680px);
+    min-width: 0;
+  }
+
+  .trading-modal {
+    width: min(94vw, 980px);
     min-width: 0;
   }
 

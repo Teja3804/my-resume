@@ -410,9 +410,11 @@ export default function HomePage() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [slideDirection, setSlideDirection] = useState(1);
   const [isChessModalOpen, setIsChessModalOpen] = useState(false);
+  const [isTradingModalOpen, setIsTradingModalOpen] = useState(false);
   const [chessFen, setChessFen] = useState("start");
   const [chessStatus, setChessStatus] = useState("Your move (White).");
   const [chessMoves, setChessMoves] = useState([]);
+  const [selectedChessSquare, setSelectedChessSquare] = useState("");
   const [isStockfishReady, setIsStockfishReady] = useState(false);
   const [isEngineThinking, setIsEngineThinking] = useState(false);
   const [chessBoardWidth, setChessBoardWidth] = useState(360);
@@ -470,6 +472,15 @@ export default function HomePage() {
     };
   }, [tradingData]);
 
+  const chessSquareStyles = useMemo(() => {
+    if (!selectedChessSquare) return {};
+    return {
+      [selectedChessSquare]: {
+        boxShadow: "inset 0 0 0 3px rgba(244, 93, 47, 0.78)"
+      }
+    };
+  }, [selectedChessSquare]);
+
   const syncChessState = (thinking = false) => {
     const game = chessGameRef.current;
     setChessFen(game.fen());
@@ -504,7 +515,7 @@ export default function HomePage() {
     syncChessState(false);
   };
 
-  const onChessDrop = (sourceSquare, targetSquare) => {
+  const attemptHumanMove = (sourceSquare, targetSquare) => {
     const game = chessGameRef.current;
     if (game.turn() !== "w" || game.isGameOver()) return false;
 
@@ -518,6 +529,8 @@ export default function HomePage() {
     });
 
     if (!move) return false;
+
+    setSelectedChessSquare("");
     syncChessState(false);
     window.setTimeout(() => {
       requestComputerMove();
@@ -525,8 +538,43 @@ export default function HomePage() {
     return true;
   };
 
+  const onChessDrop = (sourceSquare, targetSquare) => {
+    return attemptHumanMove(sourceSquare, targetSquare);
+  };
+
+  const onChessSquareClick = (square) => {
+    const game = chessGameRef.current;
+    if (game.turn() !== "w" || game.isGameOver()) {
+      setSelectedChessSquare("");
+      return;
+    }
+
+    const clickedPiece = game.get(square);
+    if (!selectedChessSquare) {
+      if (clickedPiece && clickedPiece.color === "w") {
+        setSelectedChessSquare(square);
+      }
+      return;
+    }
+
+    if (selectedChessSquare === square) {
+      setSelectedChessSquare("");
+      return;
+    }
+
+    const moveWasMade = attemptHumanMove(selectedChessSquare, square);
+    if (moveWasMade) return;
+
+    if (clickedPiece && clickedPiece.color === "w") {
+      setSelectedChessSquare(square);
+    } else {
+      setSelectedChessSquare("");
+    }
+  };
+
   const resetChessGame = () => {
     chessGameRef.current = new Chess();
+    setSelectedChessSquare("");
     if (stockfishRef.current && stockfishReadyRef.current) {
       stockfishRef.current.postMessage("ucinewgame");
     }
@@ -535,6 +583,11 @@ export default function HomePage() {
 
   const randomizeTicker = () => {
     setSelectedTicker((previousTicker) => pickRandomTicker(previousTicker));
+  };
+
+  const randomizeAndOpenTradingModal = () => {
+    setSelectedTicker((previousTicker) => pickRandomTicker(previousTicker));
+    setIsTradingModalOpen(true);
   };
 
   useEffect(() => {
@@ -632,17 +685,19 @@ export default function HomePage() {
   }, [isChessModalOpen]);
 
   useEffect(() => {
-    if (!isChessModalOpen) return undefined;
+    if (!isChessModalOpen && !isTradingModalOpen) return undefined;
     const onEscape = (event) => {
       if (event.key === "Escape") {
         setIsChessModalOpen(false);
+        setIsTradingModalOpen(false);
       }
     };
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
-  }, [isChessModalOpen]);
+  }, [isChessModalOpen, isTradingModalOpen]);
 
   useEffect(() => {
+    if (!isTradingModalOpen) return undefined;
     let isCancelled = false;
 
     const loadFromStaticCache = async () => {
@@ -711,10 +766,10 @@ export default function HomePage() {
     return () => {
       isCancelled = true;
     };
-  }, [selectedTicker]);
+  }, [selectedTicker, isTradingModalOpen]);
 
   useEffect(() => {
-    if (!tradingData || !brownianCanvasRef.current) return undefined;
+    if (!isTradingModalOpen || !tradingData || !brownianCanvasRef.current) return undefined;
 
     const draw = () => {
       drawBrownianSimulation(
@@ -728,7 +783,7 @@ export default function HomePage() {
     draw();
     window.addEventListener("resize", draw);
     return () => window.removeEventListener("resize", draw);
-  }, [tradingData]);
+  }, [isTradingModalOpen, tradingData]);
 
   const currentProject = filteredProjects[activeSlide];
 
@@ -956,109 +1011,39 @@ export default function HomePage() {
                             <Chessboard
                               id="preview-chess-board"
                               position={chessFen}
-                              boardWidth={104}
+                              boardWidth={76}
                               arePiecesDraggable={false}
                               boardOrientation="white"
+                              customBoardStyle={{ width: "76px", height: "76px" }}
                               customDarkSquareStyle={{ backgroundColor: "#769656" }}
                               customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
                             />
                           </div>
                           <div className="chess-preview-copy">
-                            <p>Play Human vs Computer</p>
-                            <span>{isStockfishReady ? "Stockfish Ready" : "Stockfish Loading"}</span>
+                            <p>Open Chess Arena</p>
+                            <span>
+                              Small preview. Click to play (White: Human, Black:{" "}
+                              {isStockfishReady ? "Stockfish" : "Fallback AI"}).
+                            </span>
                           </div>
                         </button>
                       </div>
                     ) : null}
 
                     {currentProject.id === "algo-trading" ? (
-                      <div className="project-module trading-module">
-                        <div className="trading-head">
-                          <p className="module-label mono">Live Market Analytics</p>
-                          <div className="trading-controls">
-                            <select
-                              value={selectedTicker}
-                              onChange={(event) => setSelectedTicker(event.target.value)}
-                            >
-                              {stockUniverse.map((stock) => (
-                                <option key={stock.ticker} value={stock.ticker}>
-                                  {stock.name} ({stock.ticker})
-                                </option>
-                              ))}
-                            </select>
-                            <button type="button" onClick={randomizeTicker}>
-                              Randomize
-                            </button>
-                          </div>
-                        </div>
-
-                        {isTradingLoading ? (
-                          <p className="trading-feedback">Loading Yahoo Finance data...</p>
-                        ) : null}
-                        {tradingError ? <p className="trading-feedback error">{tradingError}</p> : null}
-
-                        {tradingData ? (
-                          <>
-                            <div className="trading-stat-grid">
-                              <article>
-                                <span className="mono">Ticker</span>
-                                <p>
-                                  {selectedStockMeta.name} ({tradingData.ticker})
-                                </p>
-                              </article>
-                              <article>
-                                <span className="mono">Spot</span>
-                                <p>{toUsd(tradingData.spotPrice)}</p>
-                              </article>
-                              <article>
-                                <span className="mono">Brownian Paths</span>
-                                <p>{brownianPathCount.toLocaleString()}</p>
-                              </article>
-                              <article>
-                                <span className="mono">Strike Range</span>
-                                <p>
-                                  {tradingData.strikes[0]} -{" "}
-                                  {tradingData.strikes[tradingData.strikes.length - 1]}
-                                </p>
-                              </article>
-                            </div>
-
-                            <div className="brownian-panel">
-                              <div className="brownian-head">
-                                <h4>One-Year Brownian Simulation</h4>
-                                <p className="mono">
-                                  {brownianPathCount.toLocaleString()} lines | Human-readable expected path
-                                </p>
-                              </div>
-                              <canvas ref={brownianCanvasRef} className="brownian-canvas" />
-                            </div>
-
-                            <div className="surface-panel">
-                              <div className="surface-head">
-                                <h4>3D Options Volume Surface</h4>
-                                <p className="mono">
-                                  Upcoming 2 months | {optionsRangePoints} points above and below spot
-                                </p>
-                              </div>
-                              <Plot
-                                data={optionsSurfaceData}
-                                layout={optionsSurfaceLayout}
-                                config={{
-                                  displaylogo: false,
-                                  responsive: true,
-                                  modeBarButtonsToRemove: [
-                                    "lasso2d",
-                                    "select2d",
-                                    "toggleSpikelines",
-                                    "autoScale2d"
-                                  ]
-                                }}
-                                style={{ width: "100%", height: "420px" }}
-                                useResizeHandler
-                              />
-                            </div>
-                          </>
-                        ) : null}
+                      <div className="project-module trading-launch">
+                        <p className="module-label mono">Live Market Analytics</p>
+                        <button
+                          type="button"
+                          className="trading-launch-button mono"
+                          onClick={randomizeAndOpenTradingModal}
+                        >
+                          Randomize
+                        </button>
+                        <p className="trading-launch-copy">
+                          Opens a popup with one-year Brownian simulation and 3D options volume
+                          surface for a random stock.
+                        </p>
                       </div>
                     ) : null}
                   </motion.article>
@@ -1315,6 +1300,8 @@ export default function HomePage() {
                       boardWidth={chessBoardWidth}
                       arePiecesDraggable
                       onPieceDrop={onChessDrop}
+                      onSquareClick={onChessSquareClick}
+                      customSquareStyles={chessSquareStyles}
                       boardOrientation="white"
                       customDarkSquareStyle={{ backgroundColor: "#769656" }}
                       customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
@@ -1339,6 +1326,114 @@ export default function HomePage() {
                       <p>{chessMoves.length ? chessMoves.join(" ") : "No moves yet."}</p>
                     </div>
                   </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isTradingModalOpen ? (
+            <motion.div
+              className="trading-modal-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsTradingModalOpen(false)}
+            >
+              <motion.div
+                className="trading-modal"
+                initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.96 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="trading-modal-head">
+                  <div>
+                    <p className="mono">Live Market Analytics</p>
+                    <h3>
+                      {selectedStockMeta.name} ({selectedTicker})
+                    </h3>
+                  </div>
+                  <div className="trading-modal-actions">
+                    <button type="button" onClick={randomizeTicker} className="mono">
+                      Randomize
+                    </button>
+                    <button type="button" onClick={() => setIsTradingModalOpen(false)}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+
+                <div className="trading-modal-body">
+                  {isTradingLoading ? (
+                    <p className="trading-feedback">Loading Yahoo Finance data...</p>
+                  ) : null}
+                  {tradingError ? <p className="trading-feedback error">{tradingError}</p> : null}
+
+                  {tradingData ? (
+                    <>
+                      <div className="trading-stat-grid">
+                        <article>
+                          <span className="mono">Ticker</span>
+                          <p>
+                            {selectedStockMeta.name} ({tradingData.ticker})
+                          </p>
+                        </article>
+                        <article>
+                          <span className="mono">Spot</span>
+                          <p>{toUsd(tradingData.spotPrice)}</p>
+                        </article>
+                        <article>
+                          <span className="mono">Brownian Paths</span>
+                          <p>{brownianPathCount.toLocaleString()}</p>
+                        </article>
+                        <article>
+                          <span className="mono">Strike Range</span>
+                          <p>
+                            {tradingData.strikes[0]} -{" "}
+                            {tradingData.strikes[tradingData.strikes.length - 1]}
+                          </p>
+                        </article>
+                      </div>
+
+                      <div className="brownian-panel">
+                        <div className="brownian-head">
+                          <h4>One-Year Brownian Simulation</h4>
+                          <p className="mono">
+                            {brownianPathCount.toLocaleString()} lines | Human-readable expected path
+                          </p>
+                        </div>
+                        <canvas ref={brownianCanvasRef} className="brownian-canvas" />
+                      </div>
+
+                      <div className="surface-panel">
+                        <div className="surface-head">
+                          <h4>3D Options Volume Surface</h4>
+                          <p className="mono">
+                            Upcoming 2 months | {optionsRangePoints} points above and below spot
+                          </p>
+                        </div>
+                        <Plot
+                          data={optionsSurfaceData}
+                          layout={optionsSurfaceLayout}
+                          config={{
+                            displaylogo: false,
+                            responsive: true,
+                            modeBarButtonsToRemove: [
+                              "lasso2d",
+                              "select2d",
+                              "toggleSpikelines",
+                              "autoScale2d"
+                            ]
+                          }}
+                          style={{ width: "100%", height: "420px" }}
+                          useResizeHandler
+                        />
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </motion.div>
             </motion.div>

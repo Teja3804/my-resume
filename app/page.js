@@ -281,11 +281,6 @@ function toUsd(value) {
   }).format(value);
 }
 
-function formatOptionDate(epochSeconds) {
-  const date = new Date(epochSeconds * 1000);
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 function parseStockfishBestMove(rawLine) {
   if (!rawLine || !rawLine.startsWith("bestmove ")) return null;
   const parts = rawLine.trim().split(/\s+/);
@@ -300,16 +295,6 @@ function getChessStatus(game, engineThinking) {
   if (game.isDraw()) return "Draw. Start a new game to play again.";
   if (engineThinking) return "Computer is thinking...";
   return game.turn() === "w" ? "Your move (White)." : "Computer to move (Black).";
-}
-
-function buildStrikeAxis(centerPrice) {
-  const lower = Math.floor(centerPrice - optionsRangePoints);
-  const upper = Math.ceil(centerPrice + optionsRangePoints);
-  const strikes = [];
-  for (let strike = lower; strike <= upper; strike += 1) {
-    strikes.push(strike);
-  }
-  return strikes;
 }
 
 function drawBrownianSimulation(canvas, startPrice, annualDrift, annualVolatility) {
@@ -431,7 +416,7 @@ export default function HomePage() {
   const [isStockfishReady, setIsStockfishReady] = useState(false);
   const [isEngineThinking, setIsEngineThinking] = useState(false);
   const [chessBoardWidth, setChessBoardWidth] = useState(360);
-  const [selectedTicker, setSelectedTicker] = useState("MSFT");
+  const [selectedTicker, setSelectedTicker] = useState(() => pickRandomTicker());
   const [tradingData, setTradingData] = useState(null);
   const [isTradingLoading, setIsTradingLoading] = useState(false);
   const [tradingError, setTradingError] = useState("");
@@ -519,10 +504,12 @@ export default function HomePage() {
     syncChessState(false);
   };
 
-  const onChessDrop = (sourceSquare, targetSquare, piece) => {
+  const onChessDrop = (sourceSquare, targetSquare) => {
     const game = chessGameRef.current;
     if (game.turn() !== "w" || game.isGameOver()) return false;
-    if (!piece || !piece.startsWith("w")) return false;
+
+    const sourcePiece = game.get(sourceSquare);
+    if (!sourcePiece || sourcePiece.color !== "w") return false;
 
     const move = game.move({
       from: sourceSquare,
@@ -552,7 +539,6 @@ export default function HomePage() {
 
   useEffect(() => {
     syncChessState(false);
-    setSelectedTicker(pickRandomTicker());
   }, []);
 
   useEffect(() => {
@@ -664,120 +650,26 @@ export default function HomePage() {
       setTradingError("");
 
       try {
-        const chartResponse = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${selectedTicker}?range=1y&interval=1d`,
-          { cache: "no-store" }
-        );
-        if (!chartResponse.ok) {
-          throw new Error(`Chart request failed with status ${chartResponse.status}`);
+        const response = await fetch(`/api/market-data?ticker=${selectedTicker}`, {
+          cache: "no-store"
+        });
+        if (!response.ok) {
+          throw new Error(`Market request failed with status ${response.status}`);
         }
-        const chartPayload = await chartResponse.json();
-        const chartResult = chartPayload?.chart?.result?.[0];
-        if (!chartResult) {
-          throw new Error("Missing price history.");
-        }
-
-        const closes = (chartResult?.indicators?.quote?.[0]?.close || []).filter(
-          (value) => Number.isFinite(value) && value > 0
-        );
-        if (closes.length < 30) {
-          throw new Error("Not enough market history for simulation.");
-        }
-
-        const spotPrice = Number(chartResult?.meta?.regularMarketPrice) || closes[closes.length - 1];
-        const logReturns = [];
-        for (let index = 1; index < closes.length; index += 1) {
-          logReturns.push(Math.log(closes[index] / closes[index - 1]));
-        }
-        const meanDailyReturn =
-          logReturns.reduce((accumulator, current) => accumulator + current, 0) /
-          Math.max(logReturns.length, 1);
-        const variance =
-          logReturns.reduce(
-            (accumulator, current) => accumulator + (current - meanDailyReturn) ** 2,
-            0
-          ) / Math.max(logReturns.length - 1, 1);
-        const stdDailyReturn = Math.sqrt(Math.max(variance, 0));
-        const annualDrift = meanDailyReturn * tradingDays;
-        const annualVolatility = stdDailyReturn * Math.sqrt(tradingDays);
-
-        const optionsRootResponse = await fetch(
-          `https://query2.finance.yahoo.com/v7/finance/options/${selectedTicker}`,
-          { cache: "no-store" }
-        );
-        if (!optionsRootResponse.ok) {
-          throw new Error(`Options request failed with status ${optionsRootResponse.status}`);
-        }
-        const optionsRootPayload = await optionsRootResponse.json();
-        const optionsRootResult = optionsRootPayload?.optionChain?.result?.[0];
-        const expirationDates = optionsRootResult?.expirationDates || [];
-        if (!expirationDates.length) {
-          throw new Error("No options expiries returned.");
-        }
-
-        const nowSeconds = Math.floor(Date.now() / 1000);
-        const twoMonthsLater = nowSeconds + 60 * 24 * 60 * 60;
-        let validExpiries = expirationDates
-          .filter((epoch) => epoch >= nowSeconds && epoch <= twoMonthsLater)
-          .slice(0, 8);
-        if (!validExpiries.length) {
-          validExpiries = expirationDates.slice(0, 6);
-        }
-
-        const strikes = buildStrikeAxis(spotPrice);
-        const lowerStrike = strikes[0];
-        const upperStrike = strikes[strikes.length - 1];
-        const expiryLabels = [];
-        const volumeSurface = [];
-
-        for (let expiryIndex = 0; expiryIndex < validExpiries.length; expiryIndex += 1) {
-          const expiry = validExpiries[expiryIndex];
-          let optionsResult = null;
-
-          if (expiryIndex === 0 && optionsRootResult?.options?.[0]) {
-            optionsResult = optionsRootResult.options[0];
-          } else {
-            const optionsResponse = await fetch(
-              `https://query2.finance.yahoo.com/v7/finance/options/${selectedTicker}?date=${expiry}`,
-              { cache: "no-store" }
-            );
-            if (!optionsResponse.ok) {
-              throw new Error(`Options expiry request failed with status ${optionsResponse.status}`);
-            }
-            const optionsPayload = await optionsResponse.json();
-            optionsResult = optionsPayload?.optionChain?.result?.[0]?.options?.[0];
-          }
-
-          const row = new Array(strikes.length).fill(0);
-          const calls = optionsResult?.calls || [];
-          const puts = optionsResult?.puts || [];
-          [...calls, ...puts].forEach((contract) => {
-            const strike = Math.round(contract?.strike);
-            if (!Number.isFinite(strike) || strike < lowerStrike || strike > upperStrike) return;
-            const volume = Number.isFinite(contract?.volume)
-              ? contract.volume
-              : Number(contract?.openInterest || 0);
-            row[strike - lowerStrike] += Math.max(volume, 0);
-          });
-
-          expiryLabels.push(formatOptionDate(expiry));
-          volumeSurface.push(row);
-        }
-
-        if (volumeSurface.length === 1) {
-          volumeSurface.push([...volumeSurface[0]]);
-          expiryLabels.push(`${expiryLabels[0]} +`);
+        const payload = await response.json();
+        if (!payload?.success) {
+          throw new Error(payload?.error || "Market data could not be loaded.");
         }
 
         if (!isCancelled) {
           setTradingData({
             ticker: selectedTicker,
-            spotPrice,
-            annualDrift,
-            annualVolatility,
-            strikes,
-            expiryLabels,
-            volumeSurface
+            spotPrice: payload.spotPrice,
+            annualDrift: payload.annualDrift,
+            annualVolatility: payload.annualVolatility,
+            strikes: payload.strikes,
+            expiryLabels: payload.expiryLabels,
+            volumeSurface: payload.volumeSurface
           });
           setTradingError("");
         }
@@ -1043,7 +935,7 @@ export default function HomePage() {
                             <Chessboard
                               id="preview-chess-board"
                               position={chessFen}
-                              boardWidth={170}
+                              boardWidth={104}
                               arePiecesDraggable={false}
                               boardOrientation="white"
                               customDarkSquareStyle={{ backgroundColor: "#769656" }}
@@ -1400,6 +1292,7 @@ export default function HomePage() {
                       id="main-chess-board"
                       position={chessFen}
                       boardWidth={chessBoardWidth}
+                      arePiecesDraggable
                       onPieceDrop={onChessDrop}
                       boardOrientation="white"
                       customDarkSquareStyle={{ backgroundColor: "#769656" }}

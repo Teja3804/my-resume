@@ -1,17 +1,16 @@
 /** @type {import('next').NextConfig} */
 const isGithubActions = process.env.GITHUB_ACTIONS || false;
 const repository = process.env.GITHUB_REPOSITORY?.replace(/.*?\//, "") || "";
-const basePath = isGithubActions && repository ? `/${repository}` : "";
+const isStaticExport = process.env.STATIC_EXPORT === "1";
+const basePath = isStaticExport && isGithubActions && repository ? `/${repository}` : "";
 
 const nextConfig = {
   reactStrictMode: true,
-  output: "export",
-  trailingSlash: true,
+  ...(isStaticExport ? { output: "export", trailingSlash: true } : {}),
   images: {
     unoptimized: true
   },
-  basePath,
-  assetPrefix: basePath
+  ...(isStaticExport ? { basePath, assetPrefix: basePath } : {})
 };
 
 module.exports = nextConfig;

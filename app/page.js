@@ -61,78 +61,86 @@ const experienceData = [
     role: "Software Developer",
     organization: "Capri Global Capital",
     period: "2022 - 2023",
+    location: "India",
+    domain: "Financial Services",
     highlights: [
       "Developed and supported software features for financial workflows and operational systems.",
       "Collaborated with cross-functional teams to deliver stable, production-ready releases.",
       "Contributed to backend integration, data handling, and application performance improvements."
-    ]
+    ],
+    tools: ["Python", "SQL", "JavaScript", "API Integration", "Performance Optimization"]
   }
 ];
 
 const skillGroups = [
   {
-    title: "Frontend Development",
+    title: "Frontend Engineering",
+    summary: "Building responsive, fast, and polished user interfaces.",
     items: [
-      { name: "React.js", level: 90 },
-      { name: "Next.js", level: 88 },
-      { name: "JavaScript (ES6+)", level: 90 },
-      { name: "TypeScript", level: 82 },
-      { name: "HTML5", level: 93 },
-      { name: "CSS3", level: 90 },
-      { name: "Responsive Design", level: 91 },
-      { name: "Framer Motion", level: 85 }
+      "React.js",
+      "Next.js",
+      "JavaScript (ES6+)",
+      "TypeScript",
+      "HTML5",
+      "CSS3",
+      "Responsive Design",
+      "Framer Motion"
     ]
   },
   {
     title: "Backend and API Engineering",
+    summary: "Designing service layers and robust integration workflows.",
     items: [
-      { name: "Python", level: 92 },
-      { name: "Node.js", level: 84 },
-      { name: "Express.js", level: 81 },
-      { name: "FastAPI", level: 80 },
-      { name: "REST API Design", level: 87 },
-      { name: "Authentication Flows", level: 82 },
-      { name: "System Design Fundamentals", level: 83 },
-      { name: "Database Integration", level: 86 }
+      "Python",
+      "Node.js",
+      "Express.js",
+      "FastAPI",
+      "REST API Design",
+      "Authentication Flows",
+      "System Design Fundamentals",
+      "Database Integration"
     ]
   },
   {
-    title: "Data, Databases, and Analytics",
+    title: "Data and Database Systems",
+    summary: "Structuring data models and analytics for product decision-making.",
     items: [
-      { name: "SQL", level: 88 },
-      { name: "PostgreSQL", level: 83 },
-      { name: "MySQL", level: 84 },
-      { name: "MongoDB", level: 76 },
-      { name: "Pandas", level: 86 },
-      { name: "NumPy", level: 84 },
-      { name: "Data Modeling", level: 85 },
-      { name: "Performance Analytics", level: 87 }
+      "SQL",
+      "PostgreSQL",
+      "MySQL",
+      "MongoDB",
+      "Pandas",
+      "NumPy",
+      "Data Modeling",
+      "Performance Analytics"
     ]
   },
   {
     title: "Core Computer Science",
+    summary: "Applying algorithmic thinking to practical product implementation.",
     items: [
-      { name: "Data Structures", level: 91 },
-      { name: "Algorithms", level: 89 },
-      { name: "Object-Oriented Design", level: 84 },
-      { name: "Time and Space Optimization", level: 85 },
-      { name: "Problem Solving", level: 93 },
-      { name: "Debugging", level: 90 },
-      { name: "Code Quality Practices", level: 88 },
-      { name: "Technical Documentation", level: 82 }
+      "Data Structures",
+      "Algorithms",
+      "Object-Oriented Design",
+      "Time and Space Optimization",
+      "Problem Solving",
+      "Debugging",
+      "Code Quality Practices",
+      "Technical Documentation"
     ]
   },
   {
     title: "Developer Tools and Delivery",
+    summary: "Shipping production-ready software with modern development tooling.",
     items: [
-      { name: "Git and GitHub", level: 90 },
-      { name: "Docker", level: 78 },
-      { name: "CI/CD Workflows", level: 76 },
-      { name: "Linux and Command Line", level: 84 },
-      { name: "Postman", level: 86 },
-      { name: "Unit Testing", level: 82 },
-      { name: "Integration Testing", level: 79 },
-      { name: "Agile Collaboration", level: 88 }
+      "Git and GitHub",
+      "Docker",
+      "CI/CD Workflows",
+      "Linux and Command Line",
+      "Postman",
+      "Unit Testing",
+      "Integration Testing",
+      "Agile Collaboration"
     ]
   }
 ];
@@ -539,20 +547,45 @@ export default function HomePage() {
           <SectionTitle
             kicker="Professional Experience"
             title="Experience in Software Delivery"
-            copy="Hands-on execution across independent product builds and graduate-level software initiatives."
+            copy="Professional software development experience focused on financial systems at Capri Global Capital."
           />
 
-          <div className="experience-grid">
-            {experienceData.map((item) => (
-              <motion.article key={item.role} className="experience-card" variants={fadeUp}>
-                <p className="experience-period mono">{item.period}</p>
-                <h3>{item.role}</h3>
-                <p className="experience-org">{item.organization}</p>
-                <ul className="experience-list">
-                  {item.highlights.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
+          <div className="experience-timeline">
+            {experienceData.map((item, index) => (
+              <motion.article
+                key={`${item.role}-${item.organization}`}
+                className="experience-entry"
+                variants={fadeUp}
+                whileHover={{ y: -3 }}
+              >
+                <div className="experience-rail" aria-hidden="true">
+                  <span className="experience-dot" />
+                  {index < experienceData.length - 1 ? <span className="experience-line" /> : null}
+                </div>
+
+                <div className="experience-content">
+                  <div className="experience-meta-row">
+                    <p className="experience-period mono">{item.period}</p>
+                    <span className="experience-domain mono">{item.domain}</span>
+                  </div>
+                  <h3>{item.role}</h3>
+                  <p className="experience-org">{item.organization}</p>
+                  <p className="experience-location">{item.location}</p>
+
+                  <ul className="experience-list">
+                    {item.highlights.map((point) => (
+                      <li key={point}>{point}</li>
+                    ))}
+                  </ul>
+
+                  <div className="experience-tool-row">
+                    {item.tools.map((tool) => (
+                      <span key={tool} className="experience-tool mono">
+                        {tool}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </motion.article>
             ))}
           </div>
@@ -560,7 +593,7 @@ export default function HomePage() {
 
         <motion.section
           id="skills"
-          className="section"
+          className="section skills-section"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
@@ -572,68 +605,73 @@ export default function HomePage() {
             copy="From frontend architecture to backend services and engineering delivery, this section reflects end-to-end technical breadth."
           />
 
-          <div className="skills-layout">
-            {skillGroups.map((group) => (
-              <motion.article
-                key={group.title}
-                className="skills-card"
-                variants={fadeUp}
-                whileHover={{ y: -7, scale: 1.01 }}
-                transition={{ duration: 0.25 }}
-              >
-                <h3>{group.title}</h3>
-                <div className="skill-rows">
-                  {group.items.map((item, itemIndex) => (
-                    <motion.div
-                      key={item.name}
-                      className="skill-row"
-                      initial={{ opacity: 0, x: -12 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.35, delay: itemIndex * 0.03 }}
-                    >
-                      <div className="skill-topline">
-                        <span>{item.name}</span>
-                        <span className="mono">{item.level}%</span>
-                      </div>
-                      <div className="skill-bar">
-                        <motion.div
-                          className="skill-fill"
-                          initial={{ width: 0 }}
-                          whileInView={{ width: `${item.level}%` }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 0.9, ease: [0.2, 0.65, 0.3, 0.9] }}
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.article>
-            ))}
-          </div>
+          <div className="skills-theme">
+            <motion.div
+              className="skills-theme-glow skills-theme-glow-one"
+              animate={{ x: [0, 30, -18, 0], y: [0, -20, 12, 0] }}
+              transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="skills-theme-glow skills-theme-glow-two"
+              animate={{ x: [0, -26, 16, 0], y: [0, 16, -10, 0] }}
+              transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+            />
 
-          <motion.div
-            className="tech-cloud"
-            initial={{ opacity: 0, y: 18 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.25 }}
-            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <p className="tech-cloud-title mono">Technology Stack</p>
-            <div className="tech-cloud-pills">
-              {technologyStack.map((tech, index) => (
-                <motion.span
-                  key={tech}
-                  className="tech-pill mono"
-                  style={{ "--float-delay": `${(index % 12) * 0.16}s` }}
-                  whileHover={{ y: -4, scale: 1.05 }}
-                  transition={{ duration: 0.2 }}
+            <div className="skills-layout">
+              {skillGroups.map((group, groupIndex) => (
+                <motion.article
+                  key={group.title}
+                  className="skills-card"
+                  variants={fadeUp}
+                  whileHover={{ y: -8, scale: 1.015 }}
+                  transition={{ duration: 0.25 }}
                 >
-                  {tech}
-                </motion.span>
+                  <p className="skill-group-index mono">
+                    {String(groupIndex + 1).padStart(2, "0")}
+                  </p>
+                  <h3>{group.title}</h3>
+                  <p className="skill-group-summary">{group.summary}</p>
+                  <div className="skill-pill-grid">
+                    {group.items.map((item, itemIndex) => (
+                      <motion.span
+                        key={item}
+                        className="skill-pill"
+                        initial={{ opacity: 0, y: 10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.32, delay: itemIndex * 0.025 }}
+                      >
+                        {item}
+                      </motion.span>
+                    ))}
+                  </div>
+                </motion.article>
               ))}
             </div>
-          </motion.div>
+
+            <motion.div
+              className="tech-cloud"
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.25 }}
+              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <p className="tech-cloud-title mono">Technology Stack</p>
+              <div className="tech-cloud-pills">
+                {technologyStack.map((tech, index) => (
+                  <motion.span
+                    key={tech}
+                    className="tech-pill mono"
+                    style={{ "--float-delay": `${(index % 12) * 0.16}s` }}
+                    whileHover={{ y: -4, scale: 1.05 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {tech}
+                  </motion.span>
+                ))}
+              </div>
+            </motion.div>
+          </div>
         </motion.section>
 
         <motion.section

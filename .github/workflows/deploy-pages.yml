@@ -24,13 +24,21 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Yahoo market cache
+        run: node scripts/generate_market_cache.mjs
+
+      - name: Remove server API routes for static export
+        run: rm -rf app/api
+
       - name: Build static export
+        env:
+          STATIC_EXPORT: "1"
         run: npm run build
 
       - name: Add .nojekyll

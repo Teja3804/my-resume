@@ -645,31 +645,52 @@ export default function HomePage() {
   useEffect(() => {
     let isCancelled = false;
 
+    const loadFromStaticCache = async () => {
+      const response = await fetch("market-data-cache.json", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Static cache request failed with status ${response.status}`);
+      }
+      const payload = await response.json();
+      const record = payload?.records?.[selectedTicker];
+      if (!record) {
+        throw new Error("Requested stock is unavailable in static cache.");
+      }
+      return record;
+    };
+
     const fetchTradingData = async () => {
       setIsTradingLoading(true);
       setTradingError("");
 
       try {
-        const response = await fetch(`/api/market-data?ticker=${selectedTicker}`, {
-          cache: "no-store"
-        });
-        if (!response.ok) {
-          throw new Error(`Market request failed with status ${response.status}`);
-        }
-        const payload = await response.json();
-        if (!payload?.success) {
-          throw new Error(payload?.error || "Market data could not be loaded.");
+        let marketPayload = null;
+        try {
+          const response = await fetch(`/api/market-data?ticker=${selectedTicker}`, {
+            cache: "no-store"
+          });
+          if (response.ok) {
+            const payload = await response.json();
+            if (payload?.success) {
+              marketPayload = payload;
+            } else {
+              throw new Error(payload?.error || "Server market response was not successful.");
+            }
+          } else {
+            throw new Error(`Market request failed with status ${response.status}`);
+          }
+        } catch {
+          marketPayload = await loadFromStaticCache();
         }
 
         if (!isCancelled) {
           setTradingData({
             ticker: selectedTicker,
-            spotPrice: payload.spotPrice,
-            annualDrift: payload.annualDrift,
-            annualVolatility: payload.annualVolatility,
-            strikes: payload.strikes,
-            expiryLabels: payload.expiryLabels,
-            volumeSurface: payload.volumeSurface
+            spotPrice: marketPayload.spotPrice,
+            annualDrift: marketPayload.annualDrift,
+            annualVolatility: marketPayload.annualVolatility,
+            strikes: marketPayload.strikes,
+            expiryLabels: marketPayload.expiryLabels,
+            volumeSurface: marketPayload.volumeSurface
           });
           setTradingError("");
         }

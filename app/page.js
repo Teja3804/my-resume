@@ -12,19 +12,19 @@ const navLinks = [
 
 const metrics = [
   { value: "4+", label: "End-to-end projects built" },
-  { value: "2", label: "Engineering degrees completed" },
+  { value: "1", label: "Education spotlighted" },
   { value: "3", label: "Core domains: finance, health, systems" }
 ];
 
 const projectData = [
   {
-    title: "Mutual Funds Investment App",
+    title: "selected stocks shortterm investing",
     status: "Shipped",
     summary:
       "Portfolio tracking and performance analytics with a practical data layer for investment decision support.",
     stack: ["Python", "SQL", "JavaScript", "Analytics"],
     impact: "Designed for day-to-day portfolio visibility and easier performance breakdowns.",
-    links: [{ label: "GitHub", href: "https://github.com/Teja3804/asset-reddy" }]
+    links: [{ label: "GitHub", href: "https://github.com/Teja3804/TheInterstingGame" }]
   },
   {
     title: "Interactive Chess Game",
@@ -51,7 +51,7 @@ const projectData = [
       "Strategy execution workspace with market analysis, testing loops, and automation-oriented architecture.",
     stack: ["Python", "Quant", "DSA", "Automation"],
     impact: "Focused on disciplined system design for repeatable strategy experimentation.",
-    links: [{ label: "GitHub", href: "https://github.com/Teja3804" }]
+    links: [{ label: "GitHub", href: "https://github.com/Teja3804/BrowmianSimulation" }]
   }
 ];
 
@@ -89,16 +89,8 @@ const education = [
   {
     degree: "Master of Information Systems",
     institution: "Saint Louis University, Saint Louis, Missouri",
-    period: "2024-2025",
     details:
       "Advanced work in information systems, software development, and business-aligned technical solutions."
-  },
-  {
-    degree: "Bachelor of Engineering",
-    institution: "NIT Rourkela, India",
-    period: "2019-2023",
-    details:
-      "Strong analytical foundation that now drives practical software engineering and structured execution."
   }
 ];
 
@@ -355,7 +347,6 @@ export default function HomePage() {
           <div className="timeline">
             {education.map((item) => (
               <motion.article key={item.degree} className="timeline-item" variants={fadeUp}>
-                <p className="timeline-period mono">{item.period}</p>
                 <h3>{item.degree}</h3>
                 <p className="timeline-institution">{item.institution}</p>
                 <p>{item.details}</p>

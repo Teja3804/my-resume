@@ -1,7 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { Chess } from "chess.js";
 import { AnimatePresence, motion, useScroll, useSpring, useTransform } from "framer-motion";
+import { Chessboard } from "react-chessboard";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+const Plot = dynamic(() => import("react-plotly.js"), {
+  ssr: false
+});
 
 const navLinks = [
   { href: "#work", label: "Projects" },
@@ -19,6 +26,7 @@ const metrics = [
 
 const projectData = [
   {
+    id: "investment-platform",
     title: "Selected Stocks Short-Term Investment Platform",
     status: "Shipped",
     summary:
@@ -28,6 +36,7 @@ const projectData = [
     links: [{ label: "GitHub", href: "https://github.com/Teja3804/TheInterstingGame" }]
   },
   {
+    id: "chess",
     title: "Interactive Chess Application",
     status: "Shipped",
     summary:
@@ -37,6 +46,7 @@ const projectData = [
     links: [{ label: "GitHub", href: "https://github.com/Teja3804/chesssunreddy" }]
   },
   {
+    id: "patient-portal",
     title: "Patient Portal Management System",
     status: "In Progress",
     summary:
@@ -46,6 +56,7 @@ const projectData = [
     links: [{ label: "GitHub", href: "https://github.com/Teja3804" }]
   },
   {
+    id: "algo-trading",
     title: "Algorithmic Trading Strategy Platform",
     status: "In Progress",
     summary:
@@ -55,6 +66,20 @@ const projectData = [
     links: [{ label: "GitHub", href: "https://github.com/Teja3804/BrowmianSimulation" }]
   }
 ];
+
+const stockUniverse = [
+  { ticker: "MSFT", name: "Microsoft" },
+  { ticker: "GOOG", name: "Google" },
+  { ticker: "AAPL", name: "Apple" },
+  { ticker: "BAC", name: "Bank of America" },
+  { ticker: "NVDA", name: "NVIDIA" }
+];
+
+const stockfishWorkerUrl = "https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish.js";
+const brownianPathCount = 10000;
+const brownianYears = 1;
+const tradingDays = 252;
+const optionsRangePoints = 30;
 
 const experienceData = [
   {
@@ -234,6 +259,138 @@ const slideVariants = {
   })
 };
 
+function pickRandomTicker(previousTicker = "") {
+  const available = stockUniverse.filter((stock) => stock.ticker !== previousTicker);
+  if (!available.length) return stockUniverse[0].ticker;
+  return available[Math.floor(Math.random() * available.length)].ticker;
+}
+
+function gaussianRandom() {
+  let u = 0;
+  let v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function toUsd(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
+function formatOptionDate(epochSeconds) {
+  const date = new Date(epochSeconds * 1000);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function parseStockfishBestMove(rawLine) {
+  if (!rawLine || !rawLine.startsWith("bestmove ")) return null;
+  const parts = rawLine.trim().split(/\s+/);
+  if (parts.length < 2 || parts[1] === "(none)") return null;
+  return parts[1];
+}
+
+function getChessStatus(game, engineThinking) {
+  if (game.isCheckmate()) {
+    return game.turn() === "w" ? "Checkmate. Computer wins." : "Checkmate. You win.";
+  }
+  if (game.isDraw()) return "Draw. Start a new game to play again.";
+  if (engineThinking) return "Computer is thinking...";
+  return game.turn() === "w" ? "Your move (White)." : "Computer to move (Black).";
+}
+
+function buildStrikeAxis(centerPrice) {
+  const lower = Math.floor(centerPrice - optionsRangePoints);
+  const upper = Math.ceil(centerPrice + optionsRangePoints);
+  const strikes = [];
+  for (let strike = lower; strike <= upper; strike += 1) {
+    strikes.push(strike);
+  }
+  return strikes;
+}
+
+function drawBrownianSimulation(canvas, startPrice, annualDrift, annualVolatility) {
+  if (!canvas || !startPrice || !Number.isFinite(startPrice)) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(640, Math.floor(canvas.clientWidth || 720));
+  const height = Math.max(280, Math.floor(canvas.clientHeight || 320));
+  canvas.width = Math.floor(width * dpr);
+  canvas.height = Math.floor(height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+  gradient.addColorStop(0, "#08192a");
+  gradient.addColorStop(1, "#0c2438");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(151, 210, 255, 0.08)";
+  for (let i = 1; i < 6; i += 1) {
+    const y = (height / 6) * i;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+
+  const dt = brownianYears / tradingDays;
+  const safeVol = Math.max(annualVolatility, 0.12);
+  const drift = annualDrift || 0;
+  const minPrice = Math.max(
+    0.01,
+    startPrice * Math.exp((drift - 0.5 * safeVol * safeVol) * brownianYears - 4 * safeVol)
+  );
+  const maxPrice = startPrice * Math.exp((drift - 0.5 * safeVol * safeVol) * brownianYears + 4 * safeVol);
+  const span = Math.max(maxPrice - minPrice, 0.01);
+
+  const valueToY = (price) => height - ((price - minPrice) / span) * height;
+
+  ctx.strokeStyle = "rgba(72, 205, 188, 0.045)";
+  ctx.lineWidth = 0.55;
+  for (let path = 0; path < brownianPathCount; path += 1) {
+    let price = startPrice;
+    ctx.beginPath();
+    ctx.moveTo(0, valueToY(price));
+    for (let step = 1; step <= tradingDays; step += 1) {
+      const shock = safeVol * Math.sqrt(dt) * gaussianRandom();
+      const driftPart = (drift - 0.5 * safeVol * safeVol) * dt;
+      price *= Math.exp(driftPart + shock);
+      const x = (step / tradingDays) * width;
+      ctx.lineTo(x, valueToY(price));
+    }
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "rgba(255, 198, 109, 0.95)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let step = 0; step <= tradingDays; step += 1) {
+    const t = step * dt;
+    const expected = startPrice * Math.exp(drift * t);
+    const x = (step / tradingDays) * width;
+    const y = valueToY(expected);
+    if (step === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(232, 244, 255, 0.88)";
+  ctx.font = "12px monospace";
+  ctx.fillText("Expected Path", 12, 20);
+  ctx.fillText(`${brownianPathCount.toLocaleString()} simulated lines`, 12, 38);
+}
+
 function SectionTitle({ kicker, title, copy }) {
   return (
     <motion.div
@@ -267,11 +424,136 @@ export default function HomePage() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [activeSlide, setActiveSlide] = useState(0);
   const [slideDirection, setSlideDirection] = useState(1);
+  const [isChessModalOpen, setIsChessModalOpen] = useState(false);
+  const [chessFen, setChessFen] = useState("start");
+  const [chessStatus, setChessStatus] = useState("Your move (White).");
+  const [chessMoves, setChessMoves] = useState([]);
+  const [isStockfishReady, setIsStockfishReady] = useState(false);
+  const [isEngineThinking, setIsEngineThinking] = useState(false);
+  const [chessBoardWidth, setChessBoardWidth] = useState(360);
+  const [selectedTicker, setSelectedTicker] = useState("MSFT");
+  const [tradingData, setTradingData] = useState(null);
+  const [isTradingLoading, setIsTradingLoading] = useState(false);
+  const [tradingError, setTradingError] = useState("");
+
+  const chessGameRef = useRef(new Chess());
+  const stockfishRef = useRef(null);
+  const stockfishReadyRef = useRef(false);
+  const chessBoardContainerRef = useRef(null);
+  const brownianCanvasRef = useRef(null);
 
   const filteredProjects = useMemo(() => {
     if (activeFilter === "all") return projectData;
     return projectData.filter((project) => project.status.toLowerCase() === activeFilter);
   }, [activeFilter]);
+
+  const selectedStockMeta = useMemo(
+    () => stockUniverse.find((stock) => stock.ticker === selectedTicker) || stockUniverse[0],
+    [selectedTicker]
+  );
+
+  const optionsSurfaceData = useMemo(() => {
+    if (!tradingData) return [];
+    return [
+      {
+        type: "surface",
+        x: tradingData.strikes,
+        y: tradingData.expiryLabels,
+        z: tradingData.volumeSurface,
+        colorscale: "Portland",
+        showscale: true,
+        hovertemplate: "Strike: %{x}<br>Expiry: %{y}<br>Volume: %{z}<extra></extra>"
+      }
+    ];
+  }, [tradingData]);
+
+  const optionsSurfaceLayout = useMemo(() => {
+    if (!tradingData) return {};
+    return {
+      paper_bgcolor: "rgba(0, 0, 0, 0)",
+      plot_bgcolor: "rgba(0, 0, 0, 0)",
+      margin: { l: 0, r: 0, b: 0, t: 18 },
+      scene: {
+        bgcolor: "rgba(0,0,0,0)",
+        xaxis: { title: "Strike", color: "#dcecff" },
+        yaxis: { title: "Expiry", color: "#dcecff" },
+        zaxis: { title: "Volume", color: "#dcecff" },
+        camera: {
+          eye: { x: 1.35, y: 1.2, z: 0.95 }
+        }
+      }
+    };
+  }, [tradingData]);
+
+  const syncChessState = (thinking = false) => {
+    const game = chessGameRef.current;
+    setChessFen(game.fen());
+    setChessMoves(game.history());
+    setIsEngineThinking(thinking);
+    setChessStatus(getChessStatus(game, thinking));
+  };
+
+  const requestComputerMove = () => {
+    const game = chessGameRef.current;
+    if (game.turn() !== "b" || game.isGameOver()) {
+      syncChessState(false);
+      return;
+    }
+
+    if (stockfishRef.current && stockfishReadyRef.current) {
+      setIsEngineThinking(true);
+      setChessStatus(getChessStatus(game, true));
+      stockfishRef.current.postMessage(`position fen ${game.fen()}`);
+      stockfishRef.current.postMessage("go depth 12");
+      return;
+    }
+
+    const legalMoves = game.moves({ verbose: true });
+    if (!legalMoves.length) {
+      syncChessState(false);
+      return;
+    }
+
+    const fallbackMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+    game.move(fallbackMove);
+    syncChessState(false);
+  };
+
+  const onChessDrop = (sourceSquare, targetSquare, piece) => {
+    const game = chessGameRef.current;
+    if (game.turn() !== "w" || game.isGameOver()) return false;
+    if (!piece || !piece.startsWith("w")) return false;
+
+    const move = game.move({
+      from: sourceSquare,
+      to: targetSquare,
+      promotion: "q"
+    });
+
+    if (!move) return false;
+    syncChessState(false);
+    window.setTimeout(() => {
+      requestComputerMove();
+    }, 140);
+    return true;
+  };
+
+  const resetChessGame = () => {
+    chessGameRef.current = new Chess();
+    if (stockfishRef.current && stockfishReadyRef.current) {
+      stockfishRef.current.postMessage("ucinewgame");
+    }
+    syncChessState(false);
+  };
+
+  const randomizeTicker = () => {
+    setSelectedTicker((previousTicker) => pickRandomTicker(previousTicker));
+  };
+
+  useEffect(() => {
+    syncChessState(false);
+    setSelectedTicker(pickRandomTicker());
+  }, []);
 
   useEffect(() => {
     setActiveSlide(0);
@@ -289,14 +571,251 @@ export default function HomePage() {
   }, [activeSlide, filteredProjects.length]);
 
   useEffect(() => {
-    if (filteredProjects.length <= 1) return;
-    const intervalId = setInterval(() => {
-      setSlideDirection(1);
-      setActiveSlide((prev) => (prev + 1) % filteredProjects.length);
-    }, 5200);
+    stockfishReadyRef.current = isStockfishReady;
+  }, [isStockfishReady]);
 
-    return () => clearInterval(intervalId);
-  }, [filteredProjects.length]);
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    let worker = null;
+    try {
+      worker = new Worker(stockfishWorkerUrl);
+    } catch {
+      setIsStockfishReady(false);
+      return undefined;
+    }
+
+    stockfishRef.current = worker;
+    worker.onerror = () => {
+      setIsStockfishReady(false);
+    };
+    worker.onmessage = (event) => {
+      const rawLine = typeof event.data === "string" ? event.data : event.data?.data;
+      if (!rawLine) return;
+
+      if (rawLine.includes("readyok")) {
+        setIsStockfishReady(true);
+        return;
+      }
+
+      const bestMove = parseStockfishBestMove(rawLine);
+      if (!bestMove) return;
+
+      const game = chessGameRef.current;
+      if (game.turn() !== "b" || game.isGameOver()) {
+        syncChessState(false);
+        return;
+      }
+
+      const moveResult = game.move({
+        from: bestMove.slice(0, 2),
+        to: bestMove.slice(2, 4),
+        promotion: bestMove.length > 4 ? bestMove[4] : "q"
+      });
+
+      if (!moveResult) {
+        syncChessState(false);
+        return;
+      }
+
+      syncChessState(false);
+    };
+
+    worker.postMessage("uci");
+    worker.postMessage("isready");
+
+    return () => {
+      worker.terminate();
+      stockfishRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isChessModalOpen) return undefined;
+
+    const setBoardSize = () => {
+      if (!chessBoardContainerRef.current) return;
+      const width = chessBoardContainerRef.current.clientWidth;
+      const boundedWidth = Math.min(530, Math.max(260, Math.floor(width)));
+      setChessBoardWidth(boundedWidth);
+    };
+
+    setBoardSize();
+    window.addEventListener("resize", setBoardSize);
+    return () => window.removeEventListener("resize", setBoardSize);
+  }, [isChessModalOpen]);
+
+  useEffect(() => {
+    if (!isChessModalOpen) return undefined;
+    const onEscape = (event) => {
+      if (event.key === "Escape") {
+        setIsChessModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [isChessModalOpen]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchTradingData = async () => {
+      setIsTradingLoading(true);
+      setTradingError("");
+
+      try {
+        const chartResponse = await fetch(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${selectedTicker}?range=1y&interval=1d`,
+          { cache: "no-store" }
+        );
+        if (!chartResponse.ok) {
+          throw new Error(`Chart request failed with status ${chartResponse.status}`);
+        }
+        const chartPayload = await chartResponse.json();
+        const chartResult = chartPayload?.chart?.result?.[0];
+        if (!chartResult) {
+          throw new Error("Missing price history.");
+        }
+
+        const closes = (chartResult?.indicators?.quote?.[0]?.close || []).filter(
+          (value) => Number.isFinite(value) && value > 0
+        );
+        if (closes.length < 30) {
+          throw new Error("Not enough market history for simulation.");
+        }
+
+        const spotPrice = Number(chartResult?.meta?.regularMarketPrice) || closes[closes.length - 1];
+        const logReturns = [];
+        for (let index = 1; index < closes.length; index += 1) {
+          logReturns.push(Math.log(closes[index] / closes[index - 1]));
+        }
+        const meanDailyReturn =
+          logReturns.reduce((accumulator, current) => accumulator + current, 0) /
+          Math.max(logReturns.length, 1);
+        const variance =
+          logReturns.reduce(
+            (accumulator, current) => accumulator + (current - meanDailyReturn) ** 2,
+            0
+          ) / Math.max(logReturns.length - 1, 1);
+        const stdDailyReturn = Math.sqrt(Math.max(variance, 0));
+        const annualDrift = meanDailyReturn * tradingDays;
+        const annualVolatility = stdDailyReturn * Math.sqrt(tradingDays);
+
+        const optionsRootResponse = await fetch(
+          `https://query2.finance.yahoo.com/v7/finance/options/${selectedTicker}`,
+          { cache: "no-store" }
+        );
+        if (!optionsRootResponse.ok) {
+          throw new Error(`Options request failed with status ${optionsRootResponse.status}`);
+        }
+        const optionsRootPayload = await optionsRootResponse.json();
+        const optionsRootResult = optionsRootPayload?.optionChain?.result?.[0];
+        const expirationDates = optionsRootResult?.expirationDates || [];
+        if (!expirationDates.length) {
+          throw new Error("No options expiries returned.");
+        }
+
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        const twoMonthsLater = nowSeconds + 60 * 24 * 60 * 60;
+        let validExpiries = expirationDates
+          .filter((epoch) => epoch >= nowSeconds && epoch <= twoMonthsLater)
+          .slice(0, 8);
+        if (!validExpiries.length) {
+          validExpiries = expirationDates.slice(0, 6);
+        }
+
+        const strikes = buildStrikeAxis(spotPrice);
+        const lowerStrike = strikes[0];
+        const upperStrike = strikes[strikes.length - 1];
+        const expiryLabels = [];
+        const volumeSurface = [];
+
+        for (let expiryIndex = 0; expiryIndex < validExpiries.length; expiryIndex += 1) {
+          const expiry = validExpiries[expiryIndex];
+          let optionsResult = null;
+
+          if (expiryIndex === 0 && optionsRootResult?.options?.[0]) {
+            optionsResult = optionsRootResult.options[0];
+          } else {
+            const optionsResponse = await fetch(
+              `https://query2.finance.yahoo.com/v7/finance/options/${selectedTicker}?date=${expiry}`,
+              { cache: "no-store" }
+            );
+            if (!optionsResponse.ok) {
+              throw new Error(`Options expiry request failed with status ${optionsResponse.status}`);
+            }
+            const optionsPayload = await optionsResponse.json();
+            optionsResult = optionsPayload?.optionChain?.result?.[0]?.options?.[0];
+          }
+
+          const row = new Array(strikes.length).fill(0);
+          const calls = optionsResult?.calls || [];
+          const puts = optionsResult?.puts || [];
+          [...calls, ...puts].forEach((contract) => {
+            const strike = Math.round(contract?.strike);
+            if (!Number.isFinite(strike) || strike < lowerStrike || strike > upperStrike) return;
+            const volume = Number.isFinite(contract?.volume)
+              ? contract.volume
+              : Number(contract?.openInterest || 0);
+            row[strike - lowerStrike] += Math.max(volume, 0);
+          });
+
+          expiryLabels.push(formatOptionDate(expiry));
+          volumeSurface.push(row);
+        }
+
+        if (volumeSurface.length === 1) {
+          volumeSurface.push([...volumeSurface[0]]);
+          expiryLabels.push(`${expiryLabels[0]} +`);
+        }
+
+        if (!isCancelled) {
+          setTradingData({
+            ticker: selectedTicker,
+            spotPrice,
+            annualDrift,
+            annualVolatility,
+            strikes,
+            expiryLabels,
+            volumeSurface
+          });
+          setTradingError("");
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setTradingError(error instanceof Error ? error.message : "Unable to load market data.");
+          setTradingData(null);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsTradingLoading(false);
+        }
+      }
+    };
+
+    fetchTradingData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedTicker]);
+
+  useEffect(() => {
+    if (!tradingData || !brownianCanvasRef.current) return undefined;
+
+    const draw = () => {
+      drawBrownianSimulation(
+        brownianCanvasRef.current,
+        tradingData.spotPrice,
+        tradingData.annualDrift,
+        tradingData.annualVolatility
+      );
+    };
+
+    draw();
+    window.addEventListener("resize", draw);
+    return () => window.removeEventListener("resize", draw);
+  }, [tradingData]);
 
   const currentProject = filteredProjects[activeSlide];
 
@@ -511,6 +1030,124 @@ export default function HomePage() {
                         </a>
                       ))}
                     </div>
+
+                    {currentProject.id === "chess" ? (
+                      <div className="project-module chess-module">
+                        <p className="module-label mono">Embedded Chess Demo</p>
+                        <button
+                          type="button"
+                          className="chess-preview-trigger"
+                          onClick={() => setIsChessModalOpen(true)}
+                        >
+                          <div className="chess-preview-board">
+                            <Chessboard
+                              id="preview-chess-board"
+                              position={chessFen}
+                              boardWidth={170}
+                              arePiecesDraggable={false}
+                              boardOrientation="white"
+                              customDarkSquareStyle={{ backgroundColor: "#769656" }}
+                              customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
+                            />
+                          </div>
+                          <div className="chess-preview-copy">
+                            <p>Play Human vs Computer</p>
+                            <span>{isStockfishReady ? "Stockfish Ready" : "Stockfish Loading"}</span>
+                          </div>
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {currentProject.id === "algo-trading" ? (
+                      <div className="project-module trading-module">
+                        <div className="trading-head">
+                          <p className="module-label mono">Live Market Analytics</p>
+                          <div className="trading-controls">
+                            <select
+                              value={selectedTicker}
+                              onChange={(event) => setSelectedTicker(event.target.value)}
+                            >
+                              {stockUniverse.map((stock) => (
+                                <option key={stock.ticker} value={stock.ticker}>
+                                  {stock.name} ({stock.ticker})
+                                </option>
+                              ))}
+                            </select>
+                            <button type="button" onClick={randomizeTicker}>
+                              Randomize
+                            </button>
+                          </div>
+                        </div>
+
+                        {isTradingLoading ? (
+                          <p className="trading-feedback">Loading Yahoo Finance data...</p>
+                        ) : null}
+                        {tradingError ? <p className="trading-feedback error">{tradingError}</p> : null}
+
+                        {tradingData ? (
+                          <>
+                            <div className="trading-stat-grid">
+                              <article>
+                                <span className="mono">Ticker</span>
+                                <p>
+                                  {selectedStockMeta.name} ({tradingData.ticker})
+                                </p>
+                              </article>
+                              <article>
+                                <span className="mono">Spot</span>
+                                <p>{toUsd(tradingData.spotPrice)}</p>
+                              </article>
+                              <article>
+                                <span className="mono">Brownian Paths</span>
+                                <p>{brownianPathCount.toLocaleString()}</p>
+                              </article>
+                              <article>
+                                <span className="mono">Strike Range</span>
+                                <p>
+                                  {tradingData.strikes[0]} -{" "}
+                                  {tradingData.strikes[tradingData.strikes.length - 1]}
+                                </p>
+                              </article>
+                            </div>
+
+                            <div className="brownian-panel">
+                              <div className="brownian-head">
+                                <h4>One-Year Brownian Simulation</h4>
+                                <p className="mono">
+                                  {brownianPathCount.toLocaleString()} lines | Human-readable expected path
+                                </p>
+                              </div>
+                              <canvas ref={brownianCanvasRef} className="brownian-canvas" />
+                            </div>
+
+                            <div className="surface-panel">
+                              <div className="surface-head">
+                                <h4>3D Options Volume Surface</h4>
+                                <p className="mono">
+                                  Upcoming 2 months | {optionsRangePoints} points above and below spot
+                                </p>
+                              </div>
+                              <Plot
+                                data={optionsSurfaceData}
+                                layout={optionsSurfaceLayout}
+                                config={{
+                                  displaylogo: false,
+                                  responsive: true,
+                                  modeBarButtonsToRemove: [
+                                    "lasso2d",
+                                    "select2d",
+                                    "toggleSpikelines",
+                                    "autoScale2d"
+                                  ]
+                                }}
+                                style={{ width: "100%", height: "420px" }}
+                                useResizeHandler
+                              />
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </motion.article>
                 ) : (
                   <motion.p className="project-empty" variants={fadeUp}>
@@ -729,6 +1366,70 @@ export default function HomePage() {
             </a>
           </div>
         </motion.section>
+
+        <AnimatePresence>
+          {isChessModalOpen ? (
+            <motion.div
+              className="chess-modal-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsChessModalOpen(false)}
+            >
+              <motion.div
+                className="chess-modal"
+                initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.96 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="chess-modal-head">
+                  <div>
+                    <p className="mono">Human vs Computer</p>
+                    <h3>Chess Arena (White: Human, Black: Stockfish)</h3>
+                  </div>
+                  <button type="button" onClick={() => setIsChessModalOpen(false)}>
+                    Close
+                  </button>
+                </div>
+
+                <div className="chess-modal-layout">
+                  <div ref={chessBoardContainerRef} className="chess-modal-board-wrap">
+                    <Chessboard
+                      id="main-chess-board"
+                      position={chessFen}
+                      boardWidth={chessBoardWidth}
+                      onPieceDrop={onChessDrop}
+                      boardOrientation="white"
+                      customDarkSquareStyle={{ backgroundColor: "#769656" }}
+                      customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
+                    />
+                  </div>
+
+                  <div className="chess-modal-side">
+                    <p className="chess-status">{chessStatus}</p>
+                    <p className="chess-engine mono">
+                      {isStockfishReady ? "Stockfish Online" : "Stockfish Offline (fallback AI active)"}
+                    </p>
+                    {isEngineThinking ? <p className="mono chess-engine-thinking">Engine thinking...</p> : null}
+
+                    <div className="chess-actions">
+                      <button type="button" onClick={resetChessGame}>
+                        New Game
+                      </button>
+                    </div>
+
+                    <div className="chess-history">
+                      <h4>Move History</h4>
+                      <p>{chessMoves.length ? chessMoves.join(" ") : "No moves yet."}</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </main>
     </div>
   );

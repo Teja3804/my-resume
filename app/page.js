@@ -714,16 +714,16 @@ export default function HomePage() {
     return true;
   };
 
-  const onDrop = (from, to) => tryHumanMove(from, to);
+  const onDrop = ({ sourceSquare, targetSquare }) => tryHumanMove(sourceSquare, targetSquare);
 
-  const onSqClick = (sq) => {
+  const onSqClick = ({ square }) => {
     const g = chessRef.current;
     if (g.turn() !== "w" || g.isGameOver()) { setSelectedSq(""); return; }
-    const piece = g.get(sq);
-    if (!selectedSq) { if (piece?.color === "w") setSelectedSq(sq); return; }
-    if (selectedSq === sq) { setSelectedSq(""); return; }
-    if (tryHumanMove(selectedSq, sq)) return;
-    if (piece?.color === "w") setSelectedSq(sq); else setSelectedSq("");
+    const piece = g.get(square);
+    if (!selectedSq) { if (piece?.color === "w") setSelectedSq(square); return; }
+    if (selectedSq === square) { setSelectedSq(""); return; }
+    if (tryHumanMove(selectedSq, square)) return;
+    if (piece?.color === "w") setSelectedSq(square); else setSelectedSq("");
   };
 
   const resetChess = () => {
@@ -1165,7 +1165,7 @@ export default function HomePage() {
                     id="main-board"
                     position={chessFen}
                     boardWidth={boardWidth}
-                    arePiecesDraggable
+                    canDragPiece={() => true}
                     onPieceDrop={onDrop}
                     onSquareClick={onSqClick}
                     customSquareStyles={sqStyles}

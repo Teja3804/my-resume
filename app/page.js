@@ -401,37 +401,6 @@ function reviewChessGame(history) {
   });
 }
 
-function reviewRecentChessMoves(history, limit = 6) {
-  const game = new Chess();
-  const startReviewAt = Math.max(0, history.length - limit);
-  const reviews = [];
-  history.forEach((playedMove, idx) => {
-    const side = game.turn();
-    if (idx >= startReviewAt) {
-      const before = evalForSide(game, side);
-      const best = getBestMove(game, 1);
-      const result = safeMove(game, { from: playedMove.from, to: playedMove.to, promotion: playedMove.promotion || "q" });
-      const after = evalForSide(game, side);
-      const swing = Math.max(0, Math.round((best?.score ?? before) - after));
-      const quality = classifyMove(result?.san ?? playedMove.san, best?.san, swing);
-      reviews.push({
-        idx,
-        moveNumber: Math.floor(idx / 2) + 1,
-        color: side === "w" ? "White" : "Black",
-        played: result?.san ?? playedMove.san,
-        best: best?.san ?? result?.san ?? playedMove.san,
-        quality,
-        note: quality === "Best"
-          ? "That matched the best engine choice."
-          : `${best?.san ?? "A quieter move"} was stronger in this position.`,
-      });
-    } else {
-      safeMove(game, { from: playedMove.from, to: playedMove.to, promotion: playedMove.promotion || "q" });
-    }
-  });
-  return reviews;
-}
-
 function explainBestMove(game, depth = 2) {
   const best = getBestMove(game, depth);
   if (!best) return "There is no legal move in this position.";
@@ -775,7 +744,6 @@ export default function HomePage() {
   const [quantSeed, setQuantSeed] = useState(1);
 
   const chessRef = useRef(new Chess());
-  const reviewTimerRef = useRef(null);
   const boardContainerRef = useRef(null);
   const brownianRef = useRef(null);
   const llmCanvasRef = useRef(null);
@@ -824,12 +792,9 @@ export default function HomePage() {
     setChessFen(g.fen());
     const verboseHistory = g.history({ verbose: true });
     setChessMoves(g.history());
+    setChessReview(reviewChessGame(verboseHistory));
     setEngineThinking(thinking);
     setChessStatus(getChessStatus(g, thinking, modeOverride));
-    if (reviewTimerRef.current) window.clearTimeout(reviewTimerRef.current);
-    reviewTimerRef.current = window.setTimeout(() => {
-      setChessReview(reviewRecentChessMoves(verboseHistory));
-    }, 40);
   };
 
   const doComputerMove = () => {
@@ -907,7 +872,7 @@ export default function HomePage() {
     } else if (lower.includes("last") || lower.includes("right") || lower.includes("wrong") || lower.includes("good")) {
       answer = latest ? `${latest.color}'s ${latest.played} was ${latest.quality.toLowerCase()}. ${latest.note}` : "No move has been played yet.";
     } else if (lower.includes("summary") || lower.includes("review") || lower.includes("game")) {
-      answer = summarizeChess(g, reviewChessGame(g.history({ verbose: true })));
+      answer = summarizeChess(g, chessReview);
     } else {
       answer = `${getChessStatus(g, false, chessMode)} ${explainBestMove(g, 2)}`;
     }
@@ -957,29 +922,14 @@ export default function HomePage() {
   }, [chessMode]);
 
   useEffect(() => {
-    return () => {
-      if (reviewTimerRef.current) window.clearTimeout(reviewTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!isChessOpen) return;
     if (!boardContainerRef.current) return;
-    const fitBoard = (containerWidth) => {
-      const viewportLimit = Math.max(260, window.innerHeight - 330);
-      setBoardWidth(Math.min(440, viewportLimit, Math.max(250, Math.floor(containerWidth))));
-    };
     const obs = new ResizeObserver(([entry]) => {
-      fitBoard(entry.contentRect.width);
+      const w = entry.contentRect.width;
+      setBoardWidth(Math.min(500, Math.max(260, Math.floor(w))));
     });
     obs.observe(boardContainerRef.current);
-    const onResize = () => fitBoard(boardContainerRef.current?.clientWidth ?? 380);
-    window.addEventListener("resize", onResize);
-    onResize();
-    return () => {
-      obs.disconnect();
-      window.removeEventListener("resize", onResize);
-    };
+    return () => obs.disconnect();
   }, [isChessOpen]);
 
   useEffect(() => {

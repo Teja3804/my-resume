@@ -481,13 +481,17 @@ a { color: inherit; text-decoration: none; }
 .dark-panel-head p  { margin: 0; color: rgba(176,219,252,0.88); font-size: 0.68rem; letter-spacing: 0.04em; }
 
 /* ── Chess modal ─────────────────────────────────────────────── */
-.chess-box { width: min(88vw, 980px); }
+.chess-box {
+  width: min(94vw, 900px);
+  max-height: min(94vh, 760px);
+  padding: 0.85rem;
+}
 
 .chess-layout {
-  margin-top: 0.9rem;
+  margin-top: 0.62rem;
   display: grid;
   grid-template-columns: 1fr 210px;
-  gap: 0.9rem;
+  gap: 0.68rem;
   align-items: start;
 }
 
@@ -500,36 +504,38 @@ a { color: inherit; text-decoration: none; }
 
 .chess-side {
   border: 1px solid #ddd2c2; border-radius: 14px;
-  background: rgba(255,255,255,0.62); padding: 0.8rem;
+  background: rgba(255,255,255,0.62); padding: 0.62rem;
+  max-height: calc(94vh - 155px);
+  overflow: auto;
 }
 
 .chess-status   { margin: 0; font-weight: 700; font-size: 0.92rem; }
 .chess-engine   { margin: 0.42rem 0 0; color: #4e5b66; font-size: 0.72rem; letter-spacing: 0.05em; }
 .chess-thinking { margin: 0.34rem 0 0; color: var(--accent-deep); font-size: 0.74rem; }
-.chess-controls { margin-top: 0.7rem; display: grid; grid-template-columns: 1fr; gap: 0.48rem; }
+.chess-controls { margin-top: 0.52rem; display: grid; grid-template-columns: 1fr; gap: 0.38rem; }
 .chess-controls label { display: grid; gap: 0.25rem; color: #545d66; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .chess-controls select {
   width: 100%; border: 1px solid rgba(17,17,17,0.18); border-radius: 10px;
-  background: rgba(255,255,255,0.86); padding: 0.45rem 0.52rem; color: #1b1f25;
+  background: rgba(255,255,255,0.86); padding: 0.34rem 0.46rem; color: #1b1f25;
   font: inherit; text-transform: none; letter-spacing: 0;
 }
-.chess-actions  { margin-top: 0.62rem; }
+.chess-actions  { margin-top: 0.5rem; }
 .chess-actions button {
   border: 1px solid rgba(17,17,17,0.2); border-radius: 10px;
-  background: #fff; padding: 0.42rem 0.65rem; margin: 0 0.35rem 0.35rem 0;
+  background: #fff; padding: 0.34rem 0.52rem; margin: 0 0.28rem 0.28rem 0;
   cursor: pointer; font-size: 0.82rem; transition: transform 0.18s;
 }
 .chess-actions button:hover { transform: translateY(-1px); }
 .chess-actions button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-.chess-history { margin-top: 0.72rem; }
+.chess-history { margin-top: 0.52rem; }
 .chess-history h4 { margin: 0; font-size: 0.86rem; }
-.chess-history p  { margin: 0.4rem 0 0; color: #4d5560; font-size: 0.73rem; line-height: 1.55; }
-.chess-review { margin-top: 0.8rem; display: grid; gap: 0.42rem; }
+.chess-history p  { margin: 0.32rem 0 0; color: #4d5560; font-size: 0.73rem; line-height: 1.45; max-height: 54px; overflow: auto; }
+.chess-review { margin-top: 0.58rem; display: grid; gap: 0.34rem; }
 .chess-review h4 { margin: 0; font-size: 0.86rem; }
 .chess-review > p { margin: 0; color: #626b74; font-size: 0.76rem; }
 .review-pill {
   border: 1px solid #dfd4c4; border-left: 4px solid #8b949e;
-  border-radius: 10px; background: rgba(255,255,255,0.74); padding: 0.48rem;
+  border-radius: 10px; background: rgba(255,255,255,0.74); padding: 0.36rem;
 }
 .review-pill strong { display: block; font-size: 0.76rem; }
 .review-pill span { display: inline-block; margin-top: 0.2rem; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
@@ -540,8 +546,8 @@ a { color: inherit; text-decoration: none; }
 .review-mistake { border-left-color: #c2410c; }
 .review-blunder { border-left-color: #b91c1c; }
 .coach-box {
-  margin-top: 0.9rem; border: 1px solid #ddd2c2; border-radius: 14px;
-  background: rgba(255,255,255,0.68); padding: 0.8rem;
+  margin-top: 0.62rem; border: 1px solid #ddd2c2; border-radius: 14px;
+  background: rgba(255,255,255,0.68); padding: 0.62rem;
 }
 .coach-head { display: flex; justify-content: space-between; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
 .coach-head h4 { margin: 0; font-size: 0.92rem; }
@@ -550,14 +556,14 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid rgba(17,17,17,0.2); border-radius: 10px;
   background: #fff; padding: 0.38rem 0.58rem; cursor: pointer; font-size: 0.78rem;
 }
-.coach-log { margin-top: 0.58rem; max-height: 150px; overflow: auto; display: grid; gap: 0.38rem; }
-.coach-log p { margin: 0; border-radius: 10px; padding: 0.5rem 0.58rem; color: #3f4852; font-size: 0.78rem; line-height: 1.45; }
+.coach-log { margin-top: 0.45rem; max-height: 92px; overflow: auto; display: grid; gap: 0.3rem; }
+.coach-log p { margin: 0; border-radius: 10px; padding: 0.38rem 0.48rem; color: #3f4852; font-size: 0.76rem; line-height: 1.35; }
 .coach-ai { background: #fffaf3; }
 .coach-player { background: #e8f4f3; }
-.coach-form { margin-top: 0.58rem; display: grid; grid-template-columns: 1fr auto; gap: 0.45rem; }
+.coach-form { margin-top: 0.45rem; display: grid; grid-template-columns: 1fr auto; gap: 0.45rem; }
 .coach-form input {
   min-width: 0; border: 1px solid rgba(17,17,17,0.18); border-radius: 10px;
-  background: rgba(255,255,255,0.9); padding: 0.48rem 0.6rem; font: inherit; font-size: 0.82rem;
+  background: rgba(255,255,255,0.9); padding: 0.4rem 0.52rem; font: inherit; font-size: 0.82rem;
 }
 
 /* ── Trading modal ────────────────────────────────────────────── */

@@ -1,10 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Chess } from "chess.js";
 import { AnimatePresence, motion, useScroll, useSpring, useTransform } from "framer-motion";
-import { Chessboard } from "react-chessboard";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ChessArena from "../components/chess/ChessArena";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
@@ -146,7 +145,6 @@ const stockUniverse = [
   { ticker: "NVDA", name: "NVIDIA" },
 ];
 
-const STOCKFISH_URL = "https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js";
 const BROWNIAN_PATHS = 10000;
 const BROWNIAN_YEARS = 1;
 const TRADING_DAYS = 252;
@@ -262,75 +260,6 @@ function gaussianRandom() {
 
 function toUsd(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
-}
-
-function parseStockfishBestMove(line) {
-  if (!line?.startsWith("bestmove ")) return null;
-  const parts = line.trim().split(/\s+/);
-  return parts.length >= 2 && parts[1] !== "(none)" ? parts[1] : null;
-}
-
-/* ─── Chess AI: Minimax with alpha-beta pruning ───────────────────────── */
-const PIECE_VALUES = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
-
-function evalBoard(game) {
-  if (game.isCheckmate()) return game.turn() === "b" ? 100000 : -100000;
-  if (game.isDraw()) return 0;
-  let score = 0;
-  for (const row of game.board()) {
-    for (const sq of row) {
-      if (!sq) continue;
-      score += (sq.color === "w" ? 1 : -1) * (PIECE_VALUES[sq.type] ?? 0);
-    }
-  }
-  return score;
-}
-
-function minimaxAB(game, depth, alpha, beta, maximizing) {
-  if (depth === 0 || game.isGameOver()) return evalBoard(game);
-  const moves = game.moves();
-  if (maximizing) {
-    let best = -Infinity;
-    for (const m of moves) {
-      game.move(m);
-      const v = minimaxAB(game, depth - 1, alpha, beta, false);
-      game.undo();
-      if (v > best) best = v;
-      if (v > alpha) alpha = v;
-      if (beta <= alpha) break;
-    }
-    return best;
-  }
-  let best = Infinity;
-  for (const m of moves) {
-    game.move(m);
-    const v = minimaxAB(game, depth - 1, alpha, beta, true);
-    game.undo();
-    if (v < best) best = v;
-    if (v < beta) beta = v;
-    if (beta <= alpha) break;
-  }
-  return best;
-}
-
-function getMinimaxMove(game) {
-  const moves = game.moves({ verbose: true });
-  if (!moves.length) return null;
-  let bestScore = Infinity, bestMove = moves[0];
-  for (const m of moves) {
-    game.move(m);
-    const score = minimaxAB(game, 2, -Infinity, Infinity, true);
-    game.undo();
-    if (score < bestScore) { bestScore = score; bestMove = m; }
-  }
-  return bestMove;
-}
-
-function getChessStatus(game, thinking) {
-  if (game.isCheckmate()) return game.turn() === "w" ? "Checkmate — Computer wins." : "Checkmate — You win! 🎉";
-  if (game.isDraw()) return "Draw. Start a new game.";
-  if (thinking) return "Computer is thinking…";
-  return game.turn() === "w" ? "Your move (White)." : "Computer to move (Black).";
 }
 
 /* ─── Brownian canvas ─────────────────────────────────────────────────── */
@@ -605,13 +534,6 @@ export default function HomePage() {
   const [slideDir, setSlideDir] = useState(1);
 
   const [isChessOpen, setIsChessOpen] = useState(false);
-  const [chessFen, setChessFen] = useState("start");
-  const [chessStatus, setChessStatus] = useState("Your move (White).");
-  const [chessMoves, setChessMoves] = useState([]);
-  const [selectedSq, setSelectedSq] = useState("");
-  const [sfReady, setSfReady] = useState(false);
-  const [engineThinking, setEngineThinking] = useState(false);
-  const [boardWidth, setBoardWidth] = useState(380);
 
   const [isTradingOpen, setIsTradingOpen] = useState(false);
   const [selectedTicker, setSelectedTicker] = useState(() => pickRandomTicker());
@@ -634,10 +556,6 @@ export default function HomePage() {
   const [isQuantOpen, setIsQuantOpen] = useState(false);
   const [quantSeed, setQuantSeed] = useState(1);
 
-  const chessRef = useRef(new Chess());
-  const sfRef = useRef(null);
-  const sfReadyRef = useRef(false);
-  const boardContainerRef = useRef(null);
   const brownianRef = useRef(null);
   const llmCanvasRef = useRef(null);
   const quantCanvasRef = useRef(null);
@@ -670,68 +588,6 @@ export default function HomePage() {
       camera: { eye: { x: 1.35, y: 1.2, z: 0.95 } },
     },
   }), []);
-
-  const sqStyles = useMemo(() => {
-    if (!selectedSq) return {};
-    return { [selectedSq]: { boxShadow: "inset 0 0 0 3px rgba(124,58,237,0.85)" } };
-  }, [selectedSq]);
-
-  const syncChess = (thinking = false) => {
-    const g = chessRef.current;
-    setChessFen(g.fen());
-    setChessMoves(g.history());
-    setEngineThinking(thinking);
-    setChessStatus(getChessStatus(g, thinking));
-  };
-
-  const doComputerMove = () => {
-    const g = chessRef.current;
-    if (g.turn() !== "b" || g.isGameOver()) { syncChess(false); return; }
-    if (sfRef.current && sfReadyRef.current) {
-      setEngineThinking(true);
-      setChessStatus(getChessStatus(g, true));
-      sfRef.current.postMessage(`position fen ${g.fen()}`);
-      sfRef.current.postMessage("go depth 10");
-      return;
-    }
-    setTimeout(() => {
-      const mv = getMinimaxMove(g);
-      if (mv) g.move(mv);
-      syncChess(false);
-    }, 160);
-  };
-
-  const tryHumanMove = (from, to) => {
-    const g = chessRef.current;
-    if (g.turn() !== "w" || g.isGameOver()) return false;
-    const piece = g.get(from);
-    if (!piece || piece.color !== "w") return false;
-    const mv = g.move({ from, to, promotion: "q" });
-    if (!mv) return false;
-    setSelectedSq("");
-    syncChess(false);
-    setTimeout(doComputerMove, 160);
-    return true;
-  };
-
-  const onDrop = ({ sourceSquare, targetSquare }) => tryHumanMove(sourceSquare, targetSquare);
-
-  const onSqClick = ({ square }) => {
-    const g = chessRef.current;
-    if (g.turn() !== "w" || g.isGameOver()) { setSelectedSq(""); return; }
-    const piece = g.get(square);
-    if (!selectedSq) { if (piece?.color === "w") setSelectedSq(square); return; }
-    if (selectedSq === square) { setSelectedSq(""); return; }
-    if (tryHumanMove(selectedSq, square)) return;
-    if (piece?.color === "w") setSelectedSq(square); else setSelectedSq("");
-  };
-
-  const resetChess = () => {
-    chessRef.current = new Chess();
-    setSelectedSq("");
-    sfRef.current?.postMessage("ucinewgame");
-    syncChess(false);
-  };
 
   const runRAG = async (idx) => {
     setRagIdx(idx);
@@ -769,41 +625,6 @@ export default function HomePage() {
   };
 
   useLLMTraining(llmCanvasRef, isLLMOpen);
-
-  useEffect(() => {
-    syncChess(false);
-    if (typeof window === "undefined") return;
-    let worker;
-    try { worker = new Worker(STOCKFISH_URL); } catch { return; }
-    sfRef.current = worker;
-    worker.onerror = () => setSfReady(false);
-    worker.onmessage = (e) => {
-      const line = typeof e.data === "string" ? e.data : (e.data?.data ?? "");
-      if (line.includes("readyok")) { setSfReady(true); return; }
-      const bm = parseStockfishBestMove(line);
-      if (!bm) return;
-      const g = chessRef.current;
-      if (g.turn() !== "b" || g.isGameOver()) { syncChess(false); return; }
-      const result = g.move({ from: bm.slice(0, 2), to: bm.slice(2, 4), promotion: bm[4] ?? "q" });
-      if (result) syncChess(false);
-    };
-    worker.postMessage("uci");
-    worker.postMessage("isready");
-    return () => { worker.terminate(); sfRef.current = null; };
-  }, []);
-
-  useEffect(() => { sfReadyRef.current = sfReady; }, [sfReady]);
-
-  useEffect(() => {
-    if (!isChessOpen) return;
-    if (!boardContainerRef.current) return;
-    const obs = new ResizeObserver(([entry]) => {
-      const w = entry.contentRect.width;
-      setBoardWidth(Math.min(500, Math.max(260, Math.floor(w))));
-    });
-    obs.observe(boardContainerRef.current);
-    return () => obs.disconnect();
-  }, [isChessOpen]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -1147,50 +968,7 @@ export default function HomePage() {
         </motion.section>
       </main>
 
-      {/* Chess Modal */}
-      <AnimatePresence>
-        {isChessOpen && (
-          <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsChessOpen(false)}>
-            <motion.div className="modal-box chess-box" initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.96 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} onClick={(e) => e.stopPropagation()}>
-              <div className="modal-head">
-                <div>
-                  <p className="modal-kicker mono">Human vs Computer</p>
-                  <h3 className="modal-title">Chess Arena</h3>
-                </div>
-                <button type="button" className="modal-close" onClick={() => setIsChessOpen(false)}>✕</button>
-              </div>
-              <div className="chess-layout">
-                <div ref={boardContainerRef} className="chess-board-wrap">
-                  <Chessboard
-                    id="main-board"
-                    position={chessFen}
-                    boardWidth={boardWidth}
-                    canDragPiece={() => true}
-                    onPieceDrop={onDrop}
-                    onSquareClick={onSqClick}
-                    customSquareStyles={sqStyles}
-                    boardOrientation="white"
-                    customDarkSquareStyle={{ backgroundColor: "#769656" }}
-                    customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
-                  />
-                </div>
-                <div className="chess-side">
-                  <p className="chess-status">{chessStatus}</p>
-                  <p className="chess-engine mono">{sfReady ? "✓ Stockfish Online" : "● Minimax AI Active"}</p>
-                  {engineThinking && <p className="chess-thinking mono">Engine thinking…</p>}
-                  <div className="chess-actions">
-                    <button type="button" onClick={resetChess}>New Game</button>
-                  </div>
-                  <div className="chess-history">
-                    <h4>Move History</h4>
-                    <p className="mono">{chessMoves.length ? chessMoves.join(" ") : "No moves yet."}</p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ChessArena isOpen={isChessOpen} onClose={() => setIsChessOpen(false)} />
 
       {/* Trading Modal */}
       <AnimatePresence>

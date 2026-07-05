@@ -10,6 +10,11 @@ const nextConfig = {
   images: {
     unoptimized: true
   },
+  // Client code needs this to reach files under public/ (e.g. the Stockfish
+  // worker) since basePath is not auto-prepended to plain string URLs.
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath
+  },
   ...(isStaticExport ? { basePath, assetPrefix: basePath } : {})
 };
 

@@ -146,11 +146,19 @@ const stockUniverse = [
   { ticker: "NVDA", name: "NVIDIA" },
 ];
 
-const STOCKFISH_URL = "https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js";
 const BROWNIAN_PATHS = 10000;
 const BROWNIAN_YEARS = 1;
 const TRADING_DAYS = 252;
 const OPTIONS_RANGE = 30;
+
+const opponentRatings = [
+  { rating: 800, label: "800 Beginner", depth: 1, errorRate: 0.52 },
+  { rating: 1200, label: "1200 Casual", depth: 1, errorRate: 0.32 },
+  { rating: 1500, label: "1500 Club", depth: 2, errorRate: 0.18 },
+  { rating: 1800, label: "1800 Advanced", depth: 2, errorRate: 0.08 },
+  { rating: 2000, label: "2000 Expert", depth: 3, errorRate: 0.03 },
+  { rating: 2200, label: "2200 Master", depth: 3, errorRate: 0 },
+];
 
 /* ─── Experience ─────────────────────────────────────────────────────── */
 const experienceData = [
@@ -264,18 +272,21 @@ function toUsd(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
 }
 
-function parseStockfishBestMove(line) {
-  if (!line?.startsWith("bestmove ")) return null;
-  const parts = line.trim().split(/\s+/);
-  return parts.length >= 2 && parts[1] !== "(none)" ? parts[1] : null;
+/* ─── Chess AI: Minimax with alpha-beta pruning ───────────────────────── */
+const PIECE_VALUES = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 };
+const CENTER_SQUARES = new Set(["d4", "e4", "d5", "e5", "c4", "f4", "c5", "f5"]);
+
+function safeMove(game, move) {
+  try {
+    return game.move(move);
+  } catch {
+    return null;
+  }
 }
 
-/* ─── Chess AI: Minimax with alpha-beta pruning ───────────────────────── */
-const PIECE_VALUES = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
-
-function evalBoard(game) {
-  if (game.isCheckmate()) return game.turn() === "b" ? 100000 : -100000;
-  if (game.isDraw()) return 0;
+function evalWhite(game) {
+  if (game.isCheckmate()) return game.turn() === "w" ? -100000 : 100000;
+  if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition()) return 0;
   let score = 0;
   for (const row of game.board()) {
     for (const sq of row) {
@@ -283,54 +294,146 @@ function evalBoard(game) {
       score += (sq.color === "w" ? 1 : -1) * (PIECE_VALUES[sq.type] ?? 0);
     }
   }
+  const moves = game.moves({ verbose: true });
+  score += game.turn() === "w" ? moves.length * 2 : -moves.length * 2;
+  for (const move of moves) {
+    if (CENTER_SQUARES.has(move.to)) score += game.turn() === "w" ? 8 : -8;
+    if (move.captured) score += game.turn() === "w" ? 12 : -12;
+  }
   return score;
 }
 
-function minimaxAB(game, depth, alpha, beta, maximizing) {
-  if (depth === 0 || game.isGameOver()) return evalBoard(game);
-  const moves = game.moves();
-  if (maximizing) {
-    let best = -Infinity;
-    for (const m of moves) {
-      game.move(m);
-      const v = minimaxAB(game, depth - 1, alpha, beta, false);
-      game.undo();
-      if (v > best) best = v;
-      if (v > alpha) alpha = v;
-      if (beta <= alpha) break;
-    }
-    return best;
-  }
-  let best = Infinity;
-  for (const m of moves) {
-    game.move(m);
-    const v = minimaxAB(game, depth - 1, alpha, beta, true);
+function evalForSide(game, side) {
+  const score = evalWhite(game);
+  return side === "w" ? score : -score;
+}
+
+function orderChessMoves(moves) {
+  return [...moves].sort((a, b) => movePriority(b) - movePriority(a));
+}
+
+function movePriority(move) {
+  let score = 0;
+  if (move.san?.includes("#")) score += 10000;
+  if (move.san?.includes("+")) score += 600;
+  if (move.captured) score += (PIECE_VALUES[move.captured] ?? 0) - (PIECE_VALUES[move.piece] ?? 0) / 10;
+  if (move.promotion) score += PIECE_VALUES[move.promotion] ?? 0;
+  if (CENTER_SQUARES.has(move.to)) score += 20;
+  return score;
+}
+
+function negamax(game, depth, alpha, beta, side) {
+  if (game.isCheckmate()) return -100000 - depth;
+  if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition()) return 0;
+  if (depth === 0) return evalForSide(game, side);
+
+  let best = -Infinity;
+  for (const move of orderChessMoves(game.moves({ verbose: true }))) {
+    safeMove(game, { from: move.from, to: move.to, promotion: move.promotion || "q" });
+    const score = -negamax(game, depth - 1, -beta, -alpha, side === "w" ? "b" : "w");
     game.undo();
-    if (v < best) best = v;
-    if (v < beta) beta = v;
-    if (beta <= alpha) break;
+    best = Math.max(best, score);
+    alpha = Math.max(alpha, score);
+    if (alpha >= beta) break;
   }
   return best;
 }
 
-function getMinimaxMove(game) {
-  const moves = game.moves({ verbose: true });
+function getBestMove(game, depth = 2) {
+  const side = game.turn();
+  const moves = orderChessMoves(game.moves({ verbose: true }));
   if (!moves.length) return null;
-  let bestScore = Infinity, bestMove = moves[0];
-  for (const m of moves) {
-    game.move(m);
-    const score = minimaxAB(game, 2, -Infinity, Infinity, true);
+  let bestMove = moves[0];
+  let bestScore = -Infinity;
+  for (const move of moves) {
+    safeMove(game, { from: move.from, to: move.to, promotion: move.promotion || "q" });
+    const score = -negamax(game, depth - 1, -Infinity, Infinity, side === "w" ? "b" : "w");
     game.undo();
-    if (score < bestScore) { bestScore = score; bestMove = m; }
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = move;
+    }
   }
-  return bestMove;
+  return { ...bestMove, score: Math.round(bestScore) };
 }
 
-function getChessStatus(game, thinking) {
-  if (game.isCheckmate()) return game.turn() === "w" ? "Checkmate — Computer wins." : "Checkmate — You win! 🎉";
+function getRatedMove(game, rating) {
+  const level = opponentRatings.find((item) => item.rating === rating) ?? opponentRatings[2];
+  const best = getBestMove(game, level.depth);
+  const moves = orderChessMoves(game.moves({ verbose: true }));
+  if (!moves.length) return null;
+  if (Math.random() < level.errorRate) {
+    const maxIndex = rating <= 1200 ? Math.min(5, moves.length - 1) : Math.min(3, moves.length - 1);
+    return moves[Math.floor(Math.random() * (maxIndex + 1))];
+  }
+  return best;
+}
+
+function classifyMove(played, best, swing) {
+  if (played === best) return "Best";
+  if (swing < 80) return "Good";
+  if (swing < 170) return "Inaccuracy";
+  if (swing < 320) return "Mistake";
+  return "Blunder";
+}
+
+function reviewChessGame(history) {
+  const game = new Chess();
+  return history.map((playedMove, idx) => {
+    const side = game.turn();
+    const before = evalForSide(game, side);
+    const best = getBestMove(game, 2);
+    const result = safeMove(game, { from: playedMove.from, to: playedMove.to, promotion: playedMove.promotion || "q" });
+    const after = evalForSide(game, side);
+    const swing = Math.max(0, Math.round((best?.score ?? before) - after));
+    const quality = classifyMove(result?.san ?? playedMove.san, best?.san, swing);
+    return {
+      idx,
+      moveNumber: Math.floor(idx / 2) + 1,
+      color: side === "w" ? "White" : "Black",
+      played: result?.san ?? playedMove.san,
+      best: best?.san ?? result?.san ?? playedMove.san,
+      quality,
+      note: quality === "Best"
+        ? "That matched the best engine choice."
+        : `${best?.san ?? "A quieter move"} was stronger in this position.`,
+    };
+  });
+}
+
+function explainBestMove(game, depth = 2) {
+  const best = getBestMove(game, depth);
+  if (!best) return "There is no legal move in this position.";
+  const ideas = [];
+  if (best.san.includes("#")) ideas.push("it gives checkmate");
+  else if (best.san.includes("+")) ideas.push("it gives check");
+  if (best.captured) ideas.push(`it wins or trades material`);
+  if (CENTER_SQUARES.has(best.to)) ideas.push("it improves central control");
+  if (best.flags?.includes("k") || best.flags?.includes("q")) ideas.push("it castles toward king safety");
+  if (!ideas.length) ideas.push("it improves activity without a clear tactical concession");
+  return `${game.turn() === "w" ? "White" : "Black"} should consider ${best.san}: ${ideas.join(", ")}.`;
+}
+
+function getChessStatus(game, thinking, mode = "computer") {
+  if (game.isCheckmate()) return `Checkmate — ${game.turn() === "w" ? "Black" : "White"} wins.`;
+  if (game.isStalemate()) return "Draw by stalemate.";
+  if (game.isThreefoldRepetition()) return "Draw by repetition.";
+  if (game.isInsufficientMaterial()) return "Draw by insufficient material.";
   if (game.isDraw()) return "Draw. Start a new game.";
   if (thinking) return "Computer is thinking…";
+  if (mode === "local") return `${game.turn() === "w" ? "White" : "Black"} to move.`;
   return game.turn() === "w" ? "Your move (White)." : "Computer to move (Black).";
+}
+
+function summarizeChess(game, reviews) {
+  if (!reviews.length) return "No moves yet. Start by taking the center or developing a knight.";
+  const counts = reviews.reduce((acc, review) => {
+    acc[review.quality] = (acc[review.quality] || 0) + 1;
+    return acc;
+  }, {});
+  const latest = reviews[reviews.length - 1];
+  const status = getChessStatus(game, false, "local");
+  return `${status} Review: ${counts.Best || 0} best, ${counts.Good || 0} good, ${counts.Inaccuracy || 0} inaccuracies, ${counts.Mistake || 0} mistakes, ${counts.Blunder || 0} blunders. Last move ${latest.played} was ${latest.quality.toLowerCase()}; best was ${latest.best}.`;
 }
 
 /* ─── Brownian canvas ─────────────────────────────────────────────────── */
@@ -608,8 +711,14 @@ export default function HomePage() {
   const [chessFen, setChessFen] = useState("start");
   const [chessStatus, setChessStatus] = useState("Your move (White).");
   const [chessMoves, setChessMoves] = useState([]);
+  const [chessMode, setChessMode] = useState("computer");
+  const [opponentRating, setOpponentRating] = useState(1500);
+  const [chessReview, setChessReview] = useState([]);
+  const [coachMessages, setCoachMessages] = useState([
+    { role: "coach", text: "Play a move or ask about the best move, last move, or game summary." },
+  ]);
+  const [coachInput, setCoachInput] = useState("");
   const [selectedSq, setSelectedSq] = useState("");
-  const [sfReady, setSfReady] = useState(false);
   const [engineThinking, setEngineThinking] = useState(false);
   const [boardWidth, setBoardWidth] = useState(380);
 
@@ -635,8 +744,6 @@ export default function HomePage() {
   const [quantSeed, setQuantSeed] = useState(1);
 
   const chessRef = useRef(new Chess());
-  const sfRef = useRef(null);
-  const sfReadyRef = useRef(false);
   const boardContainerRef = useRef(null);
   const brownianRef = useRef(null);
   const llmCanvasRef = useRef(null);
@@ -673,64 +780,104 @@ export default function HomePage() {
 
   const sqStyles = useMemo(() => {
     if (!selectedSq) return {};
-    return { [selectedSq]: { boxShadow: "inset 0 0 0 3px rgba(124,58,237,0.85)" } };
+    const legal = chessRef.current.moves({ square: selectedSq, verbose: true });
+    return legal.reduce((acc, move) => {
+      acc[move.to] = { boxShadow: "inset 0 0 0 999px rgba(15,106,112,0.18)" };
+      return acc;
+    }, { [selectedSq]: { boxShadow: "inset 0 0 0 3px rgba(124,58,237,0.85)" } });
   }, [selectedSq]);
 
-  const syncChess = (thinking = false) => {
+  const syncChess = (thinking = false, modeOverride = chessMode) => {
     const g = chessRef.current;
     setChessFen(g.fen());
+    const verboseHistory = g.history({ verbose: true });
     setChessMoves(g.history());
+    setChessReview(reviewChessGame(verboseHistory));
     setEngineThinking(thinking);
-    setChessStatus(getChessStatus(g, thinking));
+    setChessStatus(getChessStatus(g, thinking, modeOverride));
   };
 
   const doComputerMove = () => {
     const g = chessRef.current;
+    if (chessMode !== "computer") { syncChess(false); return; }
     if (g.turn() !== "b" || g.isGameOver()) { syncChess(false); return; }
-    if (sfRef.current && sfReadyRef.current) {
-      setEngineThinking(true);
-      setChessStatus(getChessStatus(g, true));
-      sfRef.current.postMessage(`position fen ${g.fen()}`);
-      sfRef.current.postMessage("go depth 10");
-      return;
-    }
+    setEngineThinking(true);
+    setChessStatus(getChessStatus(g, true, chessMode));
     setTimeout(() => {
-      const mv = getMinimaxMove(g);
-      if (mv) g.move(mv);
+      const mv = getRatedMove(g, opponentRating);
+      if (mv) safeMove(g, { from: mv.from, to: mv.to, promotion: mv.promotion || "q" });
       syncChess(false);
-    }, 160);
+      setCoachMessages((prev) => [...prev, { role: "coach", text: `Computer (${opponentRating}) played ${mv?.san ?? "no move"}. ${explainBestMove(g, 2)}` }]);
+    }, 260);
   };
 
   const tryHumanMove = (from, to) => {
     const g = chessRef.current;
-    if (g.turn() !== "w" || g.isGameOver()) return false;
+    if (g.isGameOver()) return false;
+    if (chessMode === "computer" && g.turn() !== "w") return false;
     const piece = g.get(from);
-    if (!piece || piece.color !== "w") return false;
-    const mv = g.move({ from, to, promotion: "q" });
+    if (!piece || piece.color !== g.turn()) return false;
+    const mv = safeMove(g, { from, to, promotion: "q" });
     if (!mv) return false;
     setSelectedSq("");
     syncChess(false);
-    setTimeout(doComputerMove, 160);
+    setCoachMessages((prev) => [...prev, { role: "coach", text: `${mv.color === "w" ? "White" : "Black"} played ${mv.san}. Ask “was my last move good?” for a quick review.` }]);
+    if (chessMode === "computer") setTimeout(doComputerMove, 160);
     return true;
   };
 
-  const onDrop = ({ sourceSquare, targetSquare }) => tryHumanMove(sourceSquare, targetSquare);
-
-  const onSqClick = ({ square }) => {
-    const g = chessRef.current;
-    if (g.turn() !== "w" || g.isGameOver()) { setSelectedSq(""); return; }
-    const piece = g.get(square);
-    if (!selectedSq) { if (piece?.color === "w") setSelectedSq(square); return; }
-    if (selectedSq === square) { setSelectedSq(""); return; }
-    if (tryHumanMove(selectedSq, square)) return;
-    if (piece?.color === "w") setSelectedSq(square); else setSelectedSq("");
+  const onDrop = (arg1, arg2) => {
+    const sourceSquare = typeof arg1 === "string" ? arg1 : arg1?.sourceSquare;
+    const targetSquare = typeof arg2 === "string" ? arg2 : arg1?.targetSquare;
+    if (!sourceSquare || !targetSquare) return false;
+    return tryHumanMove(sourceSquare, targetSquare);
   };
 
-  const resetChess = () => {
+  const onSqClick = (arg) => {
+    const square = typeof arg === "string" ? arg : arg?.square;
+    if (!square) return;
+    const g = chessRef.current;
+    if (g.isGameOver() || (chessMode === "computer" && g.turn() !== "w")) { setSelectedSq(""); return; }
+    const piece = g.get(square);
+    if (!selectedSq) { if (piece?.color === g.turn()) setSelectedSq(square); return; }
+    if (selectedSq === square) { setSelectedSq(""); return; }
+    if (tryHumanMove(selectedSq, square)) return;
+    if (piece?.color === g.turn()) setSelectedSq(square); else setSelectedSq("");
+  };
+
+  const resetChess = (nextMode = chessMode, nextRating = opponentRating) => {
     chessRef.current = new Chess();
     setSelectedSq("");
-    sfRef.current?.postMessage("ucinewgame");
+    setCoachMessages([{ role: "coach", text: `New ${nextMode === "computer" ? `game vs ${nextRating}` : "1 vs 1 game"} started.` }]);
+    syncChess(false, nextMode);
+  };
+
+  const undoChess = () => {
+    const g = chessRef.current;
+    g.undo();
+    if (chessMode === "computer") g.undo();
+    setSelectedSq("");
     syncChess(false);
+  };
+
+  const askCoach = (prompt = coachInput) => {
+    const question = prompt.trim();
+    if (!question) return;
+    const g = chessRef.current;
+    const lower = question.toLowerCase();
+    const latest = chessReview[chessReview.length - 1];
+    let answer;
+    if (lower.includes("best") || lower.includes("play")) {
+      answer = explainBestMove(g, opponentRating >= 2000 ? 3 : 2);
+    } else if (lower.includes("last") || lower.includes("right") || lower.includes("wrong") || lower.includes("good")) {
+      answer = latest ? `${latest.color}'s ${latest.played} was ${latest.quality.toLowerCase()}. ${latest.note}` : "No move has been played yet.";
+    } else if (lower.includes("summary") || lower.includes("review") || lower.includes("game")) {
+      answer = summarizeChess(g, chessReview);
+    } else {
+      answer = `${getChessStatus(g, false, chessMode)} ${explainBestMove(g, 2)}`;
+    }
+    setCoachInput("");
+    setCoachMessages((prev) => [...prev, { role: "player", text: question }, { role: "coach", text: answer }]);
   };
 
   const runRAG = async (idx) => {
@@ -772,27 +919,7 @@ export default function HomePage() {
 
   useEffect(() => {
     syncChess(false);
-    if (typeof window === "undefined") return;
-    let worker;
-    try { worker = new Worker(STOCKFISH_URL); } catch { return; }
-    sfRef.current = worker;
-    worker.onerror = () => setSfReady(false);
-    worker.onmessage = (e) => {
-      const line = typeof e.data === "string" ? e.data : (e.data?.data ?? "");
-      if (line.includes("readyok")) { setSfReady(true); return; }
-      const bm = parseStockfishBestMove(line);
-      if (!bm) return;
-      const g = chessRef.current;
-      if (g.turn() !== "b" || g.isGameOver()) { syncChess(false); return; }
-      const result = g.move({ from: bm.slice(0, 2), to: bm.slice(2, 4), promotion: bm[4] ?? "q" });
-      if (result) syncChess(false);
-    };
-    worker.postMessage("uci");
-    worker.postMessage("isready");
-    return () => { worker.terminate(); sfRef.current = null; };
-  }, []);
-
-  useEffect(() => { sfReadyRef.current = sfReady; }, [sfReady]);
+  }, [chessMode]);
 
   useEffect(() => {
     if (!isChessOpen) return;
@@ -1154,7 +1281,7 @@ export default function HomePage() {
             <motion.div className="modal-box chess-box" initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.96 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} onClick={(e) => e.stopPropagation()}>
               <div className="modal-head">
                 <div>
-                  <p className="modal-kicker mono">Human vs Computer</p>
+                  <p className="modal-kicker mono">{chessMode === "computer" ? `Human vs ${opponentRating}` : "Local 1 vs 1"}</p>
                   <h3 className="modal-title">Chess Arena</h3>
                 </div>
                 <button type="button" className="modal-close" onClick={() => setIsChessOpen(false)}>✕</button>
@@ -1170,22 +1297,72 @@ export default function HomePage() {
                     onSquareClick={onSqClick}
                     customSquareStyles={sqStyles}
                     boardOrientation="white"
+                    arePiecesDraggable={!engineThinking}
                     customDarkSquareStyle={{ backgroundColor: "#769656" }}
                     customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
                   />
                 </div>
                 <div className="chess-side">
                   <p className="chess-status">{chessStatus}</p>
-                  <p className="chess-engine mono">{sfReady ? "✓ Stockfish Online" : "● Minimax AI Active"}</p>
+                  <p className="chess-engine mono">● Rating engine active</p>
                   {engineThinking && <p className="chess-thinking mono">Engine thinking…</p>}
+                  <div className="chess-controls">
+                    <label>
+                      Mode
+                      <select value={chessMode} onChange={(e) => { const nextMode = e.target.value; setChessMode(nextMode); resetChess(nextMode, opponentRating); }}>
+                        <option value="computer">Play system</option>
+                        <option value="local">1 vs 1</option>
+                      </select>
+                    </label>
+                    <label>
+                      Opponent
+                      <select value={opponentRating} onChange={(e) => { const nextRating = Number(e.target.value); setOpponentRating(nextRating); resetChess(chessMode, nextRating); }} disabled={chessMode !== "computer"}>
+                        {opponentRatings.map((level) => (
+                          <option key={level.rating} value={level.rating}>{level.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                   <div className="chess-actions">
                     <button type="button" onClick={resetChess}>New Game</button>
+                    <button type="button" onClick={undoChess} disabled={!chessMoves.length}>Undo</button>
+                    <button type="button" onClick={() => askCoach("What is the best move?")}>Best Move</button>
                   </div>
                   <div className="chess-history">
                     <h4>Move History</h4>
                     <p className="mono">{chessMoves.length ? chessMoves.join(" ") : "No moves yet."}</p>
                   </div>
+                  <div className="chess-review">
+                    <h4>Recent Analysis</h4>
+                    {chessReview.length ? chessReview.slice(-4).reverse().map((item) => (
+                      <article key={`${item.idx}-${item.played}`} className={`review-pill review-${item.quality.toLowerCase()}`}>
+                        <strong>{item.moveNumber}. {item.color} {item.played}</strong>
+                        <span>{item.quality}</span>
+                        <p>Best: {item.best}</p>
+                      </article>
+                    )) : <p>No analysis yet.</p>}
+                  </div>
                 </div>
+              </div>
+              <div className="coach-box">
+                <div className="coach-head">
+                  <h4>Coach Chat</h4>
+                  <div>
+                    <button type="button" onClick={() => askCoach("Was my last move good?")}>Last Move</button>
+                    <button type="button" onClick={() => askCoach("Summarize the game")}>Summary</button>
+                  </div>
+                </div>
+                <div className="coach-log">
+                  {coachMessages.map((message, idx) => (
+                    <p key={`${message.role}-${idx}`} className={message.role === "player" ? "coach-player" : "coach-ai"}>
+                      <strong>{message.role === "player" ? "You" : "Coach"}:</strong> {message.text}
+                    </p>
+                  ))}
+                </div>
+                <form className="coach-form" onSubmit={(e) => { e.preventDefault(); askCoach(); }}>
+                  <input value={coachInput} onChange={(e) => setCoachInput(e.target.value)} placeholder="Ask what was wrong, what is best, or how the game is going" />
+                  <button type="submit">Ask</button>
+                </form>
               </div>
             </motion.div>
           </motion.div>

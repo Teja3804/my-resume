@@ -1289,17 +1289,32 @@ export default function HomePage() {
               <div className="chess-layout">
                 <div ref={boardContainerRef} className="chess-board-wrap">
                   <Chessboard
-                    id="main-board"
-                    position={chessFen}
-                    boardWidth={boardWidth}
-                    canDragPiece={() => true}
-                    onPieceDrop={onDrop}
-                    onSquareClick={onSqClick}
-                    customSquareStyles={sqStyles}
-                    boardOrientation="white"
-                    arePiecesDraggable={!engineThinking}
-                    customDarkSquareStyle={{ backgroundColor: "#769656" }}
-                    customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
+                    options={{
+                      id: "main-board",
+                      position: chessFen,
+                      boardOrientation: "white",
+                      allowDragging: !engineThinking,
+                      canDragPiece: ({ square }) => {
+                        const g = chessRef.current;
+                        const piece = g.get(square);
+                        if (!piece || g.isGameOver()) return false;
+                        if (chessMode === "computer") return piece.color === "w" && g.turn() === "w";
+                        return piece.color === g.turn();
+                      },
+                      onPieceDrop: onDrop,
+                      onSquareClick: onSqClick,
+                      squareStyles: sqStyles,
+                      darkSquareStyle: { backgroundColor: "#769656" },
+                      lightSquareStyle: { backgroundColor: "#eeeed2" },
+                      boardStyle: {
+                        width: boardWidth,
+                        maxWidth: "100%",
+                        aspectRatio: "1",
+                        borderRadius: "12px",
+                        overflow: "hidden",
+                        boxShadow: "0 18px 34px rgba(17,17,17,0.18)",
+                      },
+                    }}
                   />
                 </div>
                 <div className="chess-side">
